@@ -1,0 +1,69 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Scorecard</title>
+<link rel="stylesheet" href="base.css">
+<link rel="stylesheet" href="components.css">
+</head>
+<body>
+<div id="stage" class="center">
+<div class="panel sc">
+  <div class="lt-head head"><span id="badge" class="badge"></span><span id="title"></span><span id="total" class="num" style="margin-left:auto"></span></div>
+  <div class="body" id="body"></div>
+</div>
+</div>
+<script src="overlay-client.js"></script>
+<script>
+(function () {
+  var data = null, page = 0, pages = 1, ui = null, last = '';
+  function esc(t) { return String(t).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); }
+  function draw() {
+    if (!data) return;
+    var inn = data.inn, U = ui;
+    var batted = inn.batting.filter(function (b) { return b.status !== 'yet to bat'; });
+    var yet = inn.batting.filter(function (b) { return b.status === 'yet to bat'; });
+    var html = '';
+    if (pages === 1 || page === 0) {
+      html += '<table><tr><th>BATTER</th><th></th><th>R</th><th>B</th><th>4s</th><th>6s</th><th>SR</th></tr>';
+      batted.forEach(function (b) {
+        html += '<tr><td>' + esc(b.name) + (b.onStrike ? ' *' : '') + '</td><td class="out">' + esc(b.howOut || b.status) + '</td><td><b>' + b.runs + '</b></td><td>' + b.balls + '</td><td>' + b.fours + '</td><td>' + b.sixes + '</td><td>' + U.fix1(b.strikeRate) + '</td></tr>';
+      });
+      html += '</table><div class="total"><span>Extras ' + inn.extras.total + ' <small class="muted">(wd ' + inn.extras.wd + ', nb ' + inn.extras.nb + ', b ' + inn.extras.b + ', lb ' + inn.extras.lb + ', pen ' + inn.extras.pen + ')</small></span><b>' + inn.runs + '/' + inn.wickets + ' (' + inn.overs + ' ov)</b></div>';
+      if (yet.length && pages === 1) html += '<div class="fow">Yet to bat: ' + yet.map(function (b) { return esc(b.name); }).join(', ') + '</div>';
+    }
+    if (pages === 1 || page === 1) {
+      html += '<table style="margin-top:.8rem"><tr><th>BOWLER</th><th>O</th><th>M</th><th>R</th><th>W</th><th>ECON</th></tr>';
+      inn.bowling.forEach(function (b) { html += '<tr><td>' + esc(b.name) + '</td><td>' + b.overs + '</td><td>' + b.maidens + '</td><td>' + b.runs + '</td><td><b>' + b.wickets + '</b></td><td>' + U.fix2(b.economy) + '</td></tr>'; });
+      html += '</table>';
+      if (inn.fow.length) html += '<div class="fow"><b>Fall of wickets</b>  ' + inn.fow.map(function (f) { return esc(f.text); }).join('  ·  ') + '</div>';
+    }
+    if (pages > 1) html += '<div class="page-dots">' + (page + 1) + ' / ' + pages + '</div>';
+    if (html !== last) { U.el('body').innerHTML = html; last = html; }
+  }
+  setInterval(function () { if (pages > 1) { page = (page + 1) % pages; draw(); } }, 8000);
+  Overlay.init({ name: 'scorecard',
+    sample: function () { return {}; },
+    render: function (s, p, U) {
+      ui = U;
+      var want = p && p.innings ? Number(p.innings) : 0;
+      var inn = null;
+      s.innings.forEach(function (i) { if (i.number === want) inn = i; });
+      if (!inn) inn = U.currentInnings(s);
+      U.empty(!inn);
+      if (!inn) return;
+      U.colors(s, inn);
+      U.teamBadge(U.el('badge'), s.teams[inn.battingSide]);
+      U.setText(U.el('title'), inn.battingTeam.toUpperCase() + (inn.superOver ? ' · SUPER OVER' : ' · INNINGS ' + inn.number));
+      U.setText(U.el('total'), inn.runs + '/' + inn.wickets + ' (' + inn.overs + ')');
+      var rows = inn.batting.filter(function (b) { return b.status !== 'yet to bat'; }).length + inn.bowling.length;
+      pages = rows > 13 ? 2 : 1;
+      if (page >= pages) page = 0;
+      data = { inn: inn };
+      draw();
+    } });
+})();
+</script>
+</body>
+</html>

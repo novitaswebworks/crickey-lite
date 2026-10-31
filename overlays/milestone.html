@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Milestone</title>
+<link rel="stylesheet" href="base.css">
+<link rel="stylesheet" href="components.css">
+</head>
+<body>
+<div id="stage" class="mid">
+<div class="panel sting milestone">
+  <div class="word" id="word"></div>
+  <div class="info"><div class="sub" id="label"></div><div class="big-name ell" id="name"></div></div>
+</div>
+</div>
+<script src="overlay-client.js"></script>
+<script>
+Overlay.init({ name: 'milestone', transient: true,
+  sample: function () { return { kind: 'fifty', name: 'Batter Name', text: '50' }; },
+  render: function (s, p, U) {
+    var inn = U.currentInnings(s);
+    if (inn) U.colors(s, inn);
+    if (!p) return;
+    var labels = { fifty: 'HALF-CENTURY', hundred: 'CENTURY', runs: 'RUNS', fivefor: 'FIVE-WICKET HAUL', hattrick: 'HAT-TRICK' };
+    var word = p.kind === 'fivefor' ? '5-FOR' : p.kind === 'hattrick' ? 'HAT-TRICK' : p.text;
+    var w = U.el('word');
+    w.style.fontSize = String(word).length > 5 ? '2.6rem' : '';
+    U.setText(w, word);
+    U.setText(U.el('label'), labels[p.kind] || '');
+    U.setText(U.el('name'), p.name);
+  } });
+</script>
+</body>
+</html>

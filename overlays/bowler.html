@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Bowler</title>
+<link rel="stylesheet" href="base.css">
+<link rel="stylesheet" href="components.css">
+</head>
+<body>
+<div id="stage">
+<div class="panel lt">
+  <div class="lt-head head"><span id="badge" class="badge"></span><span>BOWLING &middot; <span id="team"></span></span></div>
+  <div class="lt-body">
+    <div class="fig-line"><div class="big-name ell" id="name" style="max-width:22rem"></div><div class="fig num" id="fig"></div></div>
+    <div class="fig-line sub" style="margin:.2rem 0 .7rem"><span id="econ" class="num"></span><span id="extras" class="num"></span></div>
+    <div class="chips" id="chips"></div>
+  </div>
+</div>
+</div>
+<script src="overlay-client.js"></script>
+<script>
+Overlay.init({ name: 'bowler', render: function (s, p, U) {
+  var inn = U.currentInnings(s);
+  var bw = inn ? U.bowlerOf(inn) : null;
+  U.empty(!inn);
+  if (!inn) return;
+  U.colors(s, inn);
+  var team = s.teams[inn.bowlingSide];
+  U.teamBadge(U.el('badge'), team);
+  U.setText(U.el('team'), team.name.toUpperCase());
+  U.setText(U.el('name'), bw ? bw.name : '');
+  U.setText(U.el('fig'), bw ? bw.overs + '-' + bw.maidens + '-' + bw.runs + '-' + bw.wickets : '');
+  U.setText(U.el('econ'), bw ? 'Economy ' + U.fix2(bw.economy) : '');
+  U.setText(U.el('extras'), bw ? 'Wd ' + bw.wides + '  Nb ' + bw.noBalls + '  Dots ' + bw.dots : '');
+  U.chips(U.el('chips'), inn.thisOver);
+} });
+</script>
+</body>
+</html>

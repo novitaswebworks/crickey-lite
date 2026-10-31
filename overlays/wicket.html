@@ -1,0 +1,34 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Wicket</title>
+<link rel="stylesheet" href="base.css">
+<link rel="stylesheet" href="components.css">
+</head>
+<body>
+<div id="stage" class="mid">
+<div class="panel sting wicket">
+  <div class="word">WICKET</div>
+  <div class="info">
+    <div class="big-name ell" id="name"></div>
+    <div class="sub" id="how"></div>
+    <div class="sub num" id="line"></div>
+  </div>
+</div>
+</div>
+<script src="overlay-client.js"></script>
+<script>
+Overlay.init({ name: 'wicket', transient: true,
+  sample: function (s) { return { name: 'Batter Name', howOut: 'c Fielder b Bowler', runs: 34, balls: 22, strikeRate: 154.5, bowler: 'Bowler', score: '88/3' }; },
+  render: function (s, p, U) {
+    var inn = U.currentInnings(s);
+    if (inn) U.colors(s, inn);
+    U.setText(U.el('name'), p ? p.name : '');
+    U.setText(U.el('how'), p ? p.howOut : '');
+    U.setText(U.el('line'), p ? p.runs + ' (' + p.balls + ')  ·  SR ' + U.fix1(p.strikeRate) + '  ·  ' + p.score : '');
+  } });
+</script>
+</body>
+</html>

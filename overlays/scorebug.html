@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Scorebug</title>
+<link rel="stylesheet" href="base.css">
+<link rel="stylesheet" href="components.css">
+</head>
+<body>
+<div id="stage">
+<div class="panel sb">
+  <div class="sb-row">
+    <div class="sb-mod sb-score-mod">
+      <span id="badge" class="badge"></span>
+      <div class="sb-id"><span id="team" class="sb-short"></span><span id="pips" class="sb-pips"></span></div>
+      <div class="sb-big"><span id="score" class="num"></span><span id="overs" class="sb-overs num"></span></div>
+      <div class="sb-crr"><small>CRR</small><span id="crr" class="num"></span></div>
+    </div>
+    <div class="sb-mod sb-bats">
+      <div class="sb-bat" id="bat0"><span class="st">*</span><span class="nm ell"></span><span class="rb num"></span></div>
+      <div class="sb-bat" id="bat1"><span class="st">*</span><span class="nm ell"></span><span class="rb num"></span></div>
+    </div>
+    <div class="sb-mod sb-bowl" id="bowlMod"><span class="lab">BOWLING</span><div class="nm ell" id="bowlName"></div><div class="fig num" id="bowlFig"></div></div>
+    <div class="sb-mod sb-over"><div class="chips" id="chips"></div></div>
+  </div>
+  <div class="sb-foot"><span id="foot"></span><span class="tags"><span class="tag freehit" id="fh"></span><span class="tag pp" id="pp"></span></span></div>
+</div>
+</div>
+<script src="overlay-client.js"></script>
+<script>
+Overlay.init({ name: 'scorebug', render: function (s, p, U) {
+  var inn = U.currentInnings(s);
+  U.empty(!inn);
+  if (!inn) return;
+  U.colors(s, inn);
+  var team = s.teams[inn.battingSide];
+  U.teamBadge(U.el('badge'), team);
+  U.setText(U.el('team'), team.shortName);
+  U.setText(U.el('score'), inn.runs + '/' + inn.wickets);
+  U.setText(U.el('overs'), inn.overs + '/' + inn.maxOvers);
+  var pips = '';
+  for (var w = 0; w < inn.maxWickets; w++) pips += '<i' + (w < inn.wickets ? ' class="out"' : '') + '></i>';
+  if (U.el('pips').innerHTML !== pips) U.el('pips').innerHTML = pips;
+  U.setText(U.el('crr'), U.fix2(inn.crr));
+  var sl = U.slots(inn);
+  [0, 1].forEach(function (i) {
+    var b = sl[i] ? U.batter(inn, sl[i]) : null;
+    var row = U.el('bat' + i);
+    row.classList.toggle('strike', !!b && b.id === inn.strikerId);
+    U.setText(row.querySelector('.nm'), b ? b.name : '');
+    U.setText(row.querySelector('.rb'), b ? b.runs + ' (' + b.balls + ')' : '');
+  });
+  var bw = U.bowlerOf(inn);
+  U.el('bowlMod').style.display = bw ? '' : 'none';
+  U.setText(U.el('bowlName'), bw ? bw.name : '');
+  U.setText(U.el('bowlFig'), bw ? bw.overs + '-' + bw.runs + '-' + bw.wickets : '');
+  U.chips(U.el('chips'), inn.thisOver);
+  U.setText(U.el('fh'), inn.freeHit ? 'FREE HIT' : '');
+  U.setText(U.el('pp'), inn.powerplay ? 'POWERPLAY' : '');
+  var foot = '';
+  if (s.status === 'completed' && s.result) foot = s.result.text;
+  else if (s.status === 'break') foot = s.statusText;
+  else if (inn.target !== null && !inn.complete) foot = U.chaseText(inn) + '  ·  RRR ' + U.fix2(inn.rrr) + '  ·  Target ' + inn.target;
+  else if (inn.number === 1) foot = 'Projected ' + inn.projected.current + '  ·  ' + s.title;
+  U.setText(U.el('foot'), foot);
+} });
+</script>
+</body>
+</html>

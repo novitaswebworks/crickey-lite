@@ -1,0 +1,6 @@
+/* Paper: warm off-white cards with ink text and a single rust accent. */
+body.theme-minimal {
+  --bg: rgba(250, 248, 243, .97); --bg2: rgba(20, 24, 30, .06); --fg: #14181e; --muted: #5d6672;
+  --accent: #d9480f; --accent-fg: #fff; --radius: .6rem; --shadow: 0 .3rem 1.1rem rgba(0, 0, 0, .28); --border: .08rem solid rgba(20, 24, 30, .12);
+  --chip-run-bg: #e6e2d8; --chip-run-fg: #14181e; --chip-dot-bg: #f0ede5; --chip-dot-fg: #8a919c; --strike-bg: rgba(217, 72, 15, .13);
+}

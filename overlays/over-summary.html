@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Over summary</title>
+<link rel="stylesheet" href="base.css">
+<link rel="stylesheet" href="components.css">
+</head>
+<body>
+<div id="stage" class="mid">
+<div class="panel card-o">
+  <div class="lt-head head"><span id="badge" class="badge"></span><span id="title"></span><span id="score" class="num" style="margin-left:auto"></span></div>
+  <div class="body">
+    <div class="chips" id="chips" style="margin-bottom:.8rem"></div>
+    <div class="kv"><span>Runs this over</span><b class="num" id="runs"></b></div>
+    <div class="kv"><span id="bname" class="ell"></span><b class="num" id="fig"></b></div>
+  </div>
+</div>
+</div>
+<script src="overlay-client.js"></script>
+<script>
+Overlay.init({ name: 'over-summary', transient: true,
+  sample: function (s) { var i = s.current || s.innings[s.innings.length - 1]; return i && i.lastOver ? i.lastOver : { over: 1, runs: 8, chips: [{ label: '1', kind: 'run' }, { label: '4', kind: 'four' }, { label: '0', kind: 'dot' }, { label: 'Wd', kind: 'wide' }, { label: '2', kind: 'run' }, { label: '1', kind: 'run' }], bowlerName: 'Bowler', bowlerFigures: '1.0-0-8-0', score: '8/0' }; },
+  render: function (s, p, U) {
+    var inn = U.currentInnings(s);
+    if (inn) { U.colors(s, inn); U.teamBadge(U.el('badge'), s.teams[inn.battingSide]); }
+    if (!p || !p.chips) return;
+    U.setText(U.el('title'), 'END OF OVER ' + p.over);
+    U.setText(U.el('score'), p.score);
+    U.chips(U.el('chips'), p.chips);
+    U.setText(U.el('runs'), p.runs + (p.wickets ? '  (' + p.wickets + ' wkt)' : '') + (p.maiden ? '  MAIDEN' : ''));
+    U.setText(U.el('bname'), p.bowlerName);
+    U.setText(U.el('fig'), p.bowlerFigures);
+  } });
+</script>
+</body>
+</html>

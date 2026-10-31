@@ -1,0 +1,6 @@
+/* Clay: warm charcoal-green with a clay-orange accent. */
+body.theme-classic {
+  --bg: rgba(20, 27, 24, .94); --bg2: rgba(246, 239, 226, .08); --fg: #f6efe2; --muted: #aab3a7;
+  --accent: #f08a4b; --accent-fg: #1d1006; --radius: .9rem; --shadow: 0 .5rem 1.6rem rgba(0, 0, 0, .45); --border: .08rem solid rgba(246, 239, 226, .1);
+  --chip-run-bg: #efe6d3; --chip-run-fg: #1a2420; --chip-dot-bg: rgba(246, 239, 226, .14); --chip-dot-fg: #c9cfc3; --strike-bg: rgba(240, 138, 75, .22);
+}

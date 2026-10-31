@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lower third</title>
+<link rel="stylesheet" href="base.css">
+<link rel="stylesheet" href="components.css">
+</head>
+<body>
+<div id="stage">
+<div class="panel ltx"><div class="h ell" id="h"></div><div class="s ell" id="s"></div></div>
+</div>
+<script src="overlay-client.js"></script>
+<script>
+Overlay.init({ name: 'lower-third',
+  sample: function () { return { headline: 'Headline goes here', subhead: 'Sub-headline goes here' }; },
+  render: function (s, p, U) {
+    var inn = U.currentInnings(s);
+    U.colors(s, inn);
+    var h = p && p.headline ? p.headline : '', sub = p && p.subhead ? p.subhead : '';
+    U.empty(!h && !sub);
+    U.setText(U.el('h'), h);
+    U.setText(U.el('s'), sub);
+  } });
+</script>
+</body>
+</html>

@@ -1,0 +1,8 @@
+node_modules
+data/*
+!data/.gitkeep
+dist
+*.log
+.claude-flow
+data/screenshots
+.impeccable

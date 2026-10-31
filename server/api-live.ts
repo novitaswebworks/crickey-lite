@@ -1,0 +1,170 @@
+import { Express } from 'express';
+import { z } from 'zod';
+import { Context } from './context';
+import { EventPayload, LiveState } from './engine';
+import { ApiError } from './matches';
+import { eventSchema } from './schemas';
+import { isOverlayName } from './overlays';
+import { DEFAULT_AUTO_HIDE, TRANSIENT } from './settings';
+import { exportCsv } from './export';
+import { PlayerRow } from './types';
+import { payloadFor } from './triggers';
+import { flatState, toCsv, toXml } from './vmix/feed';
+
+const num = (v: string): number => {
+  const n = Number(v);
+  if (!Number.isInteger(n)) throw new ApiError(400, 'BAD_ID', 'Invalid id.');
+  return n;
+};
+
+export function registerLiveRoutes(app: Express, ctx: Context): void {
+  const { matches, overlays, settings, store, vmix, obs, sim } = ctx;
+
+  const stateFor = (q: unknown): LiveState => {
+    const id = q !== undefined && q !== '' ? num(String(q)) : matches.activeId();
+    if (id === null) throw new ApiError(404, 'NO_ACTIVE_MATCH', 'There is no active match yet.');
+    return matches.state(id);
+  };
+
+  app.get('/api/state', (req, res) => res.json(stateFor(req.query.match)));
+
+  // ---- scoring -----------------------------------------------------------------------------
+  app.get('/api/matches/:id/events', (req, res) => res.json(matches.events(num(req.params.id))));
+  app.post('/api/matches/:id/events', (req, res) => {
+    const payload = eventSchema.parse(req.body) as EventPayload;
+    res.json({ state: matches.append(num(req.params.id), payload) });
+  });
+  app.post('/api/matches/:id/undo', (req, res) => res.json({ state: matches.undo(num(req.params.id)) }));
+  app.post('/api/matches/:id/events/:eventId/preview', (req, res) => {
+    const payload = eventSchema.parse(req.body) as EventPayload;
+    res.json({ state: matches.previewEdit(num(req.params.id), num(req.params.eventId), payload) });
+  });
+  app.patch('/api/matches/:id/events/:eventId', (req, res) => {
+    const payload = eventSchema.parse(req.body) as EventPayload;
+    res.json({ state: matches.edit(num(req.params.id), num(req.params.eventId), payload) });
+  });
+
+  app.post('/api/matches/:id/guest-player', (req, res) => {
+    const id = num(req.params.id);
+    const body = z.object({ side: z.enum(['A', 'B']), name: z.string().trim().min(1).max(60) }).parse(req.body);
+    const cfg = matches.buildConfig(id);
+    const teamId = Number(cfg.teams[body.side].id);
+    const order = store.list<PlayerRow>('players', teamId).reduce((m, p) => Math.max(m, p.orderIdx), 0) + 1;
+    const row = store.insert<PlayerRow>('players', { teamId, name: body.name, shortName: '', shirtNo: '', role: 'Guest', orderIdx: order }, teamId);
+    try {
+      res.json({ state: matches.append(id, { type: 'ADD_PLAYER', side: body.side, player: { id: String(row.id), name: body.name } }), playerId: String(row.id) });
+    } catch (e) {
+      store.remove('players', row.id);
+      throw e;
+    }
+  });
+
+  app.post('/api/matches/:id/rename-player', (req, res) => {
+    const id = num(req.params.id);
+    const body = z.object({ playerId: z.string(), name: z.string().trim().min(1).max(60) }).parse(req.body);
+    const state = matches.append(id, { type: 'RENAME_PLAYER', playerId: body.playerId, name: body.name });
+    store.update<PlayerRow>('players', Number(body.playerId), { name: body.name });
+    res.json({ state });
+  });
+
+  app.get('/api/matches/:id/export.json', (req, res) => {
+    const id = num(req.params.id);
+    res.setHeader('Content-Disposition', `attachment; filename="match-${id}.json"`);
+    res.json({ state: matches.state(id), events: matches.events(id) });
+  });
+  app.get('/api/matches/:id/export.csv', (req, res) => {
+    const id = num(req.params.id);
+    res.setHeader('Content-Disposition', `attachment; filename="match-${id}-scorecard.csv"`);
+    res.type('text/csv').send(exportCsv(matches.state(id)));
+  });
+
+  // ---- overlays ----------------------------------------------------------------------------
+  const overlayName = (v: string) => {
+    if (!isOverlayName(v)) throw new ApiError(404, 'UNKNOWN_OVERLAY', `Unknown overlay "${v}".`);
+    return v;
+  };
+  const dataOf = (body: unknown): Record<string, unknown> | undefined =>
+    z.object({ data: z.record(z.string(), z.unknown()).optional() }).parse(body ?? {}).data;
+
+  app.get('/api/overlays', (_req, res) => res.json({ overlays: overlays.snapshot(), clients: ctx.hub.counts() }));
+  app.post('/api/overlays/hide-all', (_req, res) => {
+    overlays.hideAll();
+    res.json({ overlays: overlays.snapshot() });
+  });
+  const putOnAir = (req: { params: { name: string }; body: unknown }) => {
+    const name = overlayName(req.params.name);
+    const data = dataOf(req.body);
+    const active = matches.activeId();
+    const payload = TRANSIENT.includes(name) && active !== null ? payloadFor(name, matches.state(active), data) : data;
+    overlays.show(name, payload, active);
+    return overlays.snapshot();
+  };
+  app.post('/api/overlays/:name/show', (req, res) => res.json({ overlays: putOnAir(req) }));
+  app.post('/api/overlays/:name/trigger', (req, res) => res.json({ overlays: putOnAir(req) }));
+  app.post('/api/overlays/:name/hide', (req, res) => {
+    overlays.hide(overlayName(req.params.name));
+    res.json({ overlays: overlays.snapshot() });
+  });
+
+  app.get('/api/clients', (_req, res) => res.json(ctx.hub.counts()));
+
+  // ---- settings ----------------------------------------------------------------------------
+  const masked = () => {
+    const s = settings.get();
+    return { ...s, autoHideDefaults: DEFAULT_AUTO_HIDE, pin: '', pinSet: !!settings.pin(), obs: { ...s.obs, password: '', passwordSet: !!s.obs.password } };
+  };
+  app.get('/api/settings', (_req, res) => res.json(masked()));
+  app.put('/api/settings', (req, res) => {
+    const patch = { ...(req.body as Record<string, unknown>) };
+    delete patch.pinSet;
+    delete patch.autoHideDefaults;
+    if (patch.obs && typeof patch.obs === 'object') {
+      const obsPatch = { ...(patch.obs as Record<string, unknown>) };
+      delete obsPatch.passwordSet;
+      patch.obs = obsPatch;
+    }
+    settings.update(patch);
+    vmix.reset();
+    const active = matches.activeId();
+    if (active !== null) vmix.onState(matches.state(active));
+    res.json(masked());
+  });
+
+  // ---- vMix data sources and integration ---------------------------------------------------
+  const flat = (req: { query: { match?: unknown } }) => flatState(stateFor(req.query.match));
+  app.get('/api/vmix/state.json', (req, res) => res.json(flat(req)));
+  app.get('/api/vmix/state.xml', (req, res) => res.type('application/xml').send(toXml(flat(req))));
+  app.get('/api/vmix/state.csv', (req, res) => res.type('text/csv').send(toCsv(flat(req))));
+  app.get('/api/vmix/status', (_req, res) => res.json(vmix.getStatus()));
+  app.get('/api/vmix/log', (_req, res) => res.json(vmix.getLog()));
+  app.post('/api/vmix/test', async (_req, res) => res.json(await vmix.testConnection()));
+  app.post('/api/vmix/resend', (_req, res) => {
+    vmix.reset();
+    const active = matches.activeId();
+    if (active !== null) vmix.onState(matches.state(active));
+    res.json({ ok: true });
+  });
+
+  // ---- OBS ---------------------------------------------------------------------------------
+  app.post('/api/obs/test', async (_req, res) => res.json(await obs.test()));
+  app.get('/api/obs/scenes', async (_req, res) => {
+    try {
+      res.json(await obs.scenes());
+    } catch (e) {
+      throw new ApiError(502, 'OBS_UNREACHABLE', (e as Error).message);
+    }
+  });
+
+  // ---- simulation --------------------------------------------------------------------------
+  app.get('/api/sim', (_req, res) => res.json(sim.status()));
+  app.post('/api/sim/start', (req, res) => {
+    const b = z.object({ matchId: z.number().int(), balls: z.number().int().min(1).max(2000).default(60), speedMs: z.number().int().min(50).max(5000).default(800) }).parse(req.body);
+    matches.state(b.matchId);
+    sim.start(b.matchId, b.balls, b.speedMs);
+    res.json(sim.status());
+  });
+  app.post('/api/sim/stop', (_req, res) => {
+    sim.stop();
+    res.json(sim.status());
+  });
+}

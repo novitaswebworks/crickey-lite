@@ -1,0 +1,50 @@
+@font-face { font-family: 'Oswald'; font-weight: 500; font-style: normal; src: url('fonts/oswald-latin-500-normal.woff2') format('woff2'); }
+@font-face { font-family: 'Oswald'; font-weight: 700; font-style: normal; src: url('fonts/oswald-latin-700-normal.woff2') format('woff2'); }
+
+/* 1rem = 16px at 1920 wide; everything scales with the width so 1280x720 looks identical. */
+html { font-size: calc(var(--scale, 1) * 100vw / 120); }
+html, body { margin: 0; width: 100vw; height: 100vh; overflow: hidden; background: transparent; }
+body { font-family: 'Oswald', 'Arial Narrow', 'Helvetica Neue', Arial, sans-serif; font-weight: 500; color: var(--fg, #fff); -webkit-font-smoothing: antialiased; }
+body.debug { background: repeating-conic-gradient(#3a3a3a 0% 25%, #5a5a5a 0% 50%) 0 0 / 2rem 2rem; }
+#dbg { position: fixed; left: .5rem; top: .5rem; z-index: 99; padding: .2rem .6rem; font: 600 .8rem/1.4 monospace; border-radius: .3rem; background: #000c; color: #fff; }
+#dbg.ok { color: #6f6; } #dbg.bad { color: #f66; }
+
+/* Stage: sits inside the 5% title-safe area, bottom (default) or top. */
+.stage { position: absolute; left: 5vw; right: 5vw; bottom: 5vh; display: flex; justify-content: flex-start; pointer-events: none; }
+.pos-top .stage { top: 5vh; bottom: auto; }
+.stage.center { top: 0; bottom: 0; left: 0; right: 0; align-items: center; justify-content: center; }
+
+.panel { background: var(--bg); border-radius: var(--radius); box-shadow: var(--shadow); border: var(--border); overflow: hidden;
+  opacity: 0; transform: translateY(3rem); visibility: hidden; transition: opacity .4s ease, transform .45s cubic-bezier(.2, .8, .2, 1), visibility 0s linear .45s; }
+.pos-top .panel { transform: translateY(-3rem); }
+.stage.on .panel { opacity: 1; transform: none; visibility: visible; transition-delay: 0s; }
+
+.tick { animation: tick .35s ease; }
+@keyframes tick { 0% { transform: scale(1.22); } 100% { transform: scale(1); } }
+.num { font-variant-numeric: tabular-nums; }
+.muted { color: var(--muted); }
+.accent { color: var(--accent); }
+
+/* Ball beads: small rounded squares */
+.chips { display: flex; gap: .3rem; align-items: center; min-height: 1.9rem; }
+.chip { display: inline-flex; align-items: center; justify-content: center; min-width: 1.9rem; height: 1.9rem; padding: 0 .35rem; box-sizing: border-box; border-radius: .5rem; font-size: .95rem; font-weight: 700; background: var(--chip-run-bg); color: var(--chip-run-fg); white-space: nowrap; }
+.chip.k-dot { background: var(--chip-dot-bg); color: var(--chip-dot-fg); }
+.chip.k-four { background: #2fbf71; color: #04210f; }
+.chip.k-six { background: #a78bfa; color: #170a3a; }
+.chip.k-wicket { background: #ff5a5f; color: #2a0306; }
+.chip.k-wide, .chip.k-noball { background: #f5b942; color: #231600; }
+.chip.k-bye, .chip.k-legbye { background: #5cc8ff; color: #00202e; }
+.chip.k-dead { background: #7b8696; color: #fff; }
+
+/* Team badge: logo, or a coloured tile with the initial */
+.badge { width: 3rem; height: 3rem; border-radius: .8rem; background: var(--tc, #444); display: inline-flex; align-items: center; justify-content: center; flex: none; overflow: hidden; font-size: 1.5rem; font-weight: 700; color: #fff; }
+.badge img { width: 100%; height: 100%; object-fit: contain; background: #fff2; }
+
+.tag { display: inline-block; padding: .1rem .7rem; border-radius: 1rem; font-size: .85rem; font-weight: 700; letter-spacing: .12em; }
+.tag.freehit { background: #f5b942; color: #231600; animation: pulse 1s ease-in-out infinite; }
+.tag.pp { background: transparent; color: var(--accent); border: .08rem solid var(--accent); }
+.tag:empty { display: none; }
+@keyframes pulse { 50% { opacity: .65; } }
+
+.stage.empty .panel { opacity: 0 !important; }
+.stage.mid { justify-content: center; }

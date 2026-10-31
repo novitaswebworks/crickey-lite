@@ -1,0 +1,7 @@
+/* Floodlight: near-black with an electric lime edge. */
+body.theme-neon {
+  --bg: rgba(7, 9, 13, .93); --bg2: rgba(198, 255, 61, .08); --fg: #f2f6ff; --muted: #8b97ad;
+  --accent: #c6ff3d; --accent-fg: #10160a; --radius: .35rem; --shadow: 0 0 0 .08rem rgba(198, 255, 61, .45), 0 0 1.5rem rgba(198, 255, 61, .22); --border: .08rem solid rgba(198, 255, 61, .4);
+  --chip-run-bg: #1b2430; --chip-run-fg: #d8ff7a; --chip-dot-bg: #141a23; --chip-dot-fg: #6e7a90; --strike-bg: rgba(198, 255, 61, .18);
+}
+body.theme-neon .accent, body.theme-neon .sb-big #score { text-shadow: 0 0 .9rem rgba(198, 255, 61, .55); }

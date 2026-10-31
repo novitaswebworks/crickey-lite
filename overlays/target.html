@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Target</title>
+<link rel="stylesheet" href="base.css">
+<link rel="stylesheet" href="components.css">
+</head>
+<body>
+<div id="stage" class="mid">
+<div class="panel card-o">
+  <div class="lt-head head"><span id="badge" class="badge"></span><span id="title"></span></div>
+  <div class="body">
+    <div class="target-big num" id="big"></div>
+    <div class="sub" id="sub" style="margin-bottom:.6rem"></div>
+    <div id="chase">
+      <div class="kv"><span>Runs needed</span><b class="num" id="need"></b></div>
+      <div class="kv"><span>Balls left</span><b class="num" id="left"></b></div>
+      <div class="kv"><span>Required rate</span><b class="num" id="rrr"></b></div>
+      <div class="kv"><span>Current rate</span><b class="num" id="crr"></b></div>
+    </div>
+    <div id="proj" style="display:none">
+      <div class="kv"><span>Current rate</span><b class="num" id="pcrr"></b></div>
+      <div class="proj" id="rates"></div>
+    </div>
+  </div>
+</div>
+</div>
+<script src="overlay-client.js"></script>
+<script>
+Overlay.init({ name: 'target', render: function (s, p, U) {
+  var inn = U.currentInnings(s);
+  U.empty(!inn);
+  if (!inn) return;
+  U.colors(s, inn);
+  U.teamBadge(U.el('badge'), s.teams[inn.battingSide]);
+  var chasing = inn.target !== null;
+  U.el('chase').style.display = chasing ? '' : 'none';
+  U.el('proj').style.display = chasing ? 'none' : '';
+  U.setText(U.el('title'), chasing ? 'TARGET' : 'PROJECTED SCORE');
+  if (chasing) {
+    U.setText(U.el('big'), inn.target);
+    U.setText(U.el('sub'), inn.battingTeam + ' need ' + inn.runsNeeded + ' in ' + inn.maxOvers + ' overs' + (s.revised ? ' (revised)' : ''));
+    U.setText(U.el('need'), inn.runsNeeded);
+    U.setText(U.el('left'), inn.ballsRemaining);
+    U.setText(U.el('rrr'), U.fix2(inn.rrr));
+    U.setText(U.el('crr'), U.fix2(inn.crr));
+  } else {
+    U.setText(U.el('big'), inn.projected.current);
+    U.setText(U.el('sub'), 'At the current rate · ' + inn.runs + '/' + inn.wickets + ' after ' + inn.overs + ' overs');
+    U.setText(U.el('pcrr'), U.fix2(inn.crr));
+    var r = U.el('rates');
+    var html = inn.projected.rates.map(function (x) { return '<div>@ ' + x.rate + '<b>' + x.score + '</b></div>'; }).join('');
+    if (r.innerHTML !== html) r.innerHTML = html;
+  }
+} });
+</script>
+</body>
+</html>

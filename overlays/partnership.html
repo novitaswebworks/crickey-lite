@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Partnership</title>
+<link rel="stylesheet" href="base.css">
+<link rel="stylesheet" href="components.css">
+</head>
+<body>
+<div id="stage">
+<div class="panel lt">
+  <div class="lt-head head"><span id="badge" class="badge"></span><span>PARTNERSHIP</span><span id="pt" class="num" style="margin-left:auto"></span></div>
+  <div class="lt-body">
+    <div class="fig-line"><span class="big-name num" id="runs"></span><span class="sub num" id="balls"></span></div>
+    <div id="p0"><div class="fig-line"><span class="ell" style="font-size:1.5rem"></span><span class="num" style="font-size:1.5rem;font-weight:700"></span></div><div class="bar"><i></i></div></div>
+    <div id="p1"><div class="fig-line"><span class="ell" style="font-size:1.5rem"></span><span class="num" style="font-size:1.5rem;font-weight:700"></span></div><div class="bar"><i></i></div></div>
+    <div class="sub" id="extras"></div>
+  </div>
+</div>
+</div>
+<script src="overlay-client.js"></script>
+<script>
+Overlay.init({ name: 'partnership', render: function (s, p, U) {
+  var inn = U.currentInnings(s);
+  U.empty(!inn);
+  if (!inn) return;
+  U.colors(s, inn);
+  U.teamBadge(U.el('badge'), s.teams[inn.battingSide]);
+  var pt = inn.partnership;
+  U.setText(U.el('pt'), inn.runs + '/' + inn.wickets);
+  U.setText(U.el('runs'), pt.runs + ' runs');
+  U.setText(U.el('balls'), pt.balls + ' balls');
+  var sl = U.slots(inn);
+  var shown = 0;
+  [0, 1].forEach(function (i) {
+    var id = sl[i];
+    var b = null;
+    pt.batters.forEach(function (x) { if (x.id === id) b = x; });
+    var row = U.el('p' + i);
+    var spans = row.querySelectorAll('span');
+    U.setText(spans[0], b ? b.name : '');
+    U.setText(spans[1], b ? b.runs + ' (' + b.balls + ')' : '');
+    row.querySelector('i').style.width = (b && pt.runs ? Math.round((b.runs / pt.runs) * 100) : 0) + '%';
+    shown += b ? b.runs : 0;
+  });
+  U.setText(U.el('extras'), 'Extras ' + Math.max(0, pt.runs - shown));
+} });
+</script>
+</body>
+</html>

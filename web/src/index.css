@@ -1,0 +1,27 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+html, body, #root { height: 100%; }
+body { font-family: Inter, system-ui, 'Segoe UI', Roboto, sans-serif; -webkit-tap-highlight-color: transparent; }
+
+@layer base {
+  input[type='checkbox'] { accent-color: #f08a4b; }
+  :focus-visible { outline: 2px solid #f08a4b; outline-offset: 2px; }
+}
+
+@layer components {
+  .btn { @apply inline-flex min-h-[44px] items-center justify-center rounded-xl border border-ink-600 bg-ink-700 px-4 text-sm font-semibold text-slate-100 transition active:scale-[0.97] hover:bg-ink-600 disabled:cursor-not-allowed disabled:opacity-40; }
+  .btn-primary { @apply border-accent-dim bg-accent text-ink-950 hover:brightness-110; }
+  .btn-danger { @apply border-red-800 bg-red-600 text-white hover:bg-red-500; }
+  .btn-ghost { @apply border-transparent bg-transparent hover:bg-ink-700; }
+  .input { @apply min-h-[44px] w-full rounded-lg border border-ink-600 bg-ink-900 px-3 text-sm text-slate-100 placeholder:text-slate-500 focus:border-accent focus:outline-none; }
+  .card { @apply rounded-2xl border border-ink-700 bg-ink-800 p-4 shadow-lg shadow-black/20; }
+  .label { @apply mb-1 block text-xs font-semibold uppercase tracking-widest text-slate-400; }
+  .chip { @apply inline-flex h-8 min-w-[2rem] items-center justify-center rounded-lg px-2 text-xs font-bold; }
+}
+
+@media print {
+  body { background: white; color: black; }
+  .no-print { display: none !important; }
+}

@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Batters</title>
+<link rel="stylesheet" href="base.css">
+<link rel="stylesheet" href="components.css">
+</head>
+<body>
+<div id="stage">
+<div class="panel lt">
+  <div class="lt-head head"><span id="badge" class="badge"></span><span>BATTING &middot; <span id="team"></span></span><span id="score" class="num" style="margin-left:auto"></span></div>
+  <div class="lt-body">
+    <div class="lt-row" id="bat0"><span class="st">*</span><span class="nm ell"></span><span class="rb num"></span><span class="ex num"></span></div>
+    <div class="lt-row" id="bat1"><span class="st">*</span><span class="nm ell"></span><span class="rb num"></span><span class="ex num"></span></div>
+  </div>
+</div>
+</div>
+<script src="overlay-client.js"></script>
+<script>
+Overlay.init({ name: 'batters', render: function (s, p, U) {
+  var inn = U.currentInnings(s);
+  U.empty(!inn);
+  if (!inn) return;
+  U.colors(s, inn);
+  var team = s.teams[inn.battingSide];
+  U.teamBadge(U.el('badge'), team);
+  U.setText(U.el('team'), team.name.toUpperCase());
+  U.setText(U.el('score'), inn.runs + '/' + inn.wickets + ' (' + inn.overs + ')');
+  var sl = U.slots(inn);
+  [0, 1].forEach(function (i) {
+    var b = sl[i] ? U.batter(inn, sl[i]) : null;
+    var row = U.el('bat' + i);
+    row.classList.toggle('strike', !!b && b.id === inn.strikerId);
+    U.setText(row.querySelector('.nm'), b ? b.name : '');
+    U.setText(row.querySelector('.rb'), b ? b.runs + ' (' + b.balls + ')' : '');
+    U.setText(row.querySelector('.ex'), b ? '4s ' + b.fours + '  6s ' + b.sixes + '  SR ' + U.fix1(b.strikeRate) : '');
+  });
+} });
+</script>
+</body>
+</html>

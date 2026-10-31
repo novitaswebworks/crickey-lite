@@ -1,0 +1,80 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Overlay preview</title>
+<style>
+  :root { --ink: #0d1210; --panel: #131a17; --line: #232e29; --line2: #314039; --cream: #f4efe4; --muted: #a7b0a3; --accent: #f08a4b; }
+  body { margin: 0; background: var(--ink); color: var(--cream); font: 14px system-ui, 'Segoe UI', Roboto, sans-serif; }
+  header { position: sticky; top: 0; z-index: 5; display: flex; flex-wrap: wrap; gap: 12px 18px; align-items: center; padding: 12px 20px; background: rgba(19, 26, 23, .95); backdrop-filter: blur(6px); border-bottom: 1px solid var(--line); }
+  header h1 { display: flex; align-items: center; gap: 10px; margin: 0 8px 0 0; font-size: 18px; font-weight: 800; letter-spacing: -.01em; }
+  header h1::before { content: ''; width: 13px; height: 13px; border-radius: 50%; background: var(--accent); box-shadow: 0 0 0 3px rgba(240, 138, 75, .25); }
+  label { display: flex; align-items: center; gap: 8px; font-size: 12px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+  select, button { background: var(--line); color: var(--cream); border: 1px solid var(--line2); border-radius: 10px; padding: 8px 12px; font: inherit; font-size: 14px; letter-spacing: 0; text-transform: none; }
+  select:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  .hint { color: var(--muted); font-size: 13px; }
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(480px, 1fr)); gap: 20px; padding: 20px; }
+  .cell { background: var(--panel); border: 1px solid var(--line); border-radius: 16px; padding: 12px; }
+  .cell h2 { margin: 0 0 8px; font-size: 12px; font-weight: 700; color: var(--muted); letter-spacing: .14em; text-transform: uppercase; }
+  .frame { position: relative; width: 100%; aspect-ratio: 16 / 9; overflow: hidden; border: 1px solid var(--line2); border-radius: 10px; }
+  .frame iframe { position: absolute; left: 0; top: 0; width: 1920px; height: 1080px; border: 0; transform-origin: 0 0; }
+</style>
+</head>
+<body>
+<header>
+  <h1>Overlay preview</h1>
+  <label>Theme <select id="theme"><option>classic</option><option>neon</option><option>minimal</option></select></label>
+  <label>Position <select id="pos"><option value="bottom">bottom</option><option value="top">top</option></select></label>
+  <label>Size <select id="size"><option value="1920x1080">1920 × 1080</option><option value="1280x720">1280 × 720</option></select></label>
+  <span class="hint">Every overlay is forced visible on a checkerboard and follows the active match live. Your choices are remembered.</span>
+  <span id="saveNote" style="color:var(--accent)"></span>
+</header>
+<div class="grid" id="grid"></div>
+<script>
+  var NAMES = ['scorebug', 'batters', 'bowler', 'partnership', 'four', 'six', 'wicket', 'new-batter', 'over-summary', 'target', 'scorecard', 'versus', 'result', 'lower-third', 'milestone'];
+  var grid = document.getElementById('grid');
+  var frames = [];
+  NAMES.forEach(function (n) {
+    var cell = document.createElement('div');
+    cell.className = 'cell';
+    cell.innerHTML = '<h2>' + n + '</h2><div class="frame"><iframe title="' + n + '"></iframe></div>';
+    grid.appendChild(cell);
+    frames.push({ name: n, frame: cell.querySelector('.frame'), iframe: cell.querySelector('iframe') });
+  });
+  function load() {
+    var q = new URLSearchParams(location.search);
+    var theme = document.getElementById('theme').value, pos = document.getElementById('pos').value;
+    var size = document.getElementById('size').value.split('x');
+    frames.forEach(function (f) {
+      var u = f.name + '.html?force=1&debug=1&preview=1&theme=' + theme + '&position=' + pos;
+      if (q.get('match')) u += '&match=' + encodeURIComponent(q.get('match'));
+      f.iframe.style.width = size[0] + 'px';
+      f.iframe.style.height = size[1] + 'px';
+      f.iframe.src = u;
+    });
+    fit();
+  }
+  function fit() {
+    frames.forEach(function (f) {
+      var s = f.frame.clientWidth / f.iframe.clientWidth;
+      f.iframe.style.transform = 'scale(' + s + ')';
+    });
+  }
+  // The choices are stored in the server settings (shared with the Overlays page), so they survive reloads and restarts.
+  function save() {
+    var body = { theme: document.getElementById('theme').value, view: { position: document.getElementById('pos').value, size: document.getElementById('size').value } };
+    fetch('/api/settings', { method: 'PUT', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) }).then(function (r) {
+      document.getElementById('saveNote').textContent = r.ok ? '' : 'Not saved: open the operator panel and enter the PIN first.';
+    }).catch(function () { document.getElementById('saveNote').textContent = 'Not saved: server not reachable.'; });
+  }
+  ['theme', 'pos', 'size'].forEach(function (id) { document.getElementById(id).addEventListener('change', function () { load(); save(); }); });
+  window.addEventListener('resize', fit);
+  fetch('/api/settings').then(function (r) { return r.json(); }).then(function (s) {
+    document.getElementById('theme').value = s.theme;
+    document.getElementById('pos').value = s.view.position;
+    document.getElementById('size').value = s.view.size;
+  }).catch(function () { /* keep the defaults when the server cannot be read */ }).then(load);
+</script>
+</body>
+</html>

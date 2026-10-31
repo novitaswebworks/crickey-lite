@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Result</title>
+<link rel="stylesheet" href="base.css">
+<link rel="stylesheet" href="components.css">
+</head>
+<body>
+<div id="stage" class="center">
+<div class="panel res">
+  <div class="lt-head head" style="justify-content:center"><span id="head">MATCH RESULT</span></div>
+  <div class="big" id="text"></div>
+  <div class="scores" id="scores"></div>
+  <div class="perf"><div><small>TOP SCORER</small><b id="top"></b><span class="sub num" id="topsub"></span></div><div><small>BEST BOWLER</small><b id="best"></b><span class="sub num" id="bestsub"></span></div></div>
+</div>
+</div>
+<script src="overlay-client.js"></script>
+<script>
+Overlay.init({ name: 'result', render: function (s, p, U) {
+  var inn = U.currentInnings(s);
+  U.colors(s, inn);
+  U.el('text').style.display = s.result ? '' : 'none';
+  U.setText(U.el('text'), s.result ? s.result.text : '');
+  U.setText(U.el('head'), s.result ? 'MATCH RESULT' : 'MATCH SO FAR');
+  var html = s.innings.map(function (i) { return '<span>' + i.battingTeam.replace(/&/g, '&amp;').replace(/</g, '&lt;') + ' <b>' + i.runs + '/' + i.wickets + '</b> <small class="muted">(' + i.overs + ')</small></span>'; }).join('');
+  if (U.el('scores').innerHTML !== html) U.el('scores').innerHTML = html;
+  var t = s.performers.topScorer, b = s.performers.bestBowler;
+  U.setText(U.el('top'), t ? t.name : '-');
+  U.setText(U.el('topsub'), t ? t.runs + ' (' + t.balls + ') · ' + t.team : '');
+  U.setText(U.el('best'), b ? b.name : '-');
+  U.setText(U.el('bestsub'), b ? b.wickets + '/' + b.runs + ' (' + b.overs + ') · ' + b.team : '');
+} });
+</script>
+</body>
+</html>

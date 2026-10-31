@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Four</title>
+<link rel="stylesheet" href="base.css">
+<link rel="stylesheet" href="components.css">
+</head>
+<body>
+<div id="stage" class="mid">
+<div class="panel sting four">
+  <div class="word">FOUR</div>
+  <div class="info"><div class="big-name ell" id="name"></div><div class="sub num" id="sub"></div></div>
+</div>
+</div>
+<script src="overlay-client.js"></script>
+<script>
+Overlay.init({ name: 'four', transient: true,
+  sample: function (s) { var i = s.current || s.innings[s.innings.length - 1]; var b = i && i.batting.filter(function (x) { return x.onStrike; })[0]; return { name: b ? b.name : 'Batter Name', runs: b ? b.runs : 24, balls: b ? b.balls : 15 }; },
+  render: function (s, p, U) {
+    var inn = U.currentInnings(s);
+    if (inn) U.colors(s, inn);
+    U.setText(U.el('name'), p && p.name ? p.name : '');
+    U.setText(U.el('sub'), p && p.name ? p.runs + ' (' + p.balls + ' balls)' : '');
+  } });
+</script>
+</body>
+</html>
