@@ -57,7 +57,7 @@ export function App() {
         {page === 'settings' && <Settings />}
       </main>
       <footer className="no-print border-t border-ink-700 py-3 text-center text-xs text-slate-500">
-        Developed by <a className="font-semibold text-slate-300 underline decoration-ink-500 underline-offset-2 hover:text-accent" href="https://github.com/novitaswebworks" target="_blank" rel="noopener">Novitas WebWorks</a>
+        Developed by <a className="font-semibold text-slate-300 underline decoration-ink-500 underline-offset-2 hover:text-accent" href="https://novitasweb.works" target="_blank" rel="noopener">Novitas WebWorks</a>
       </footer>
       {pinOpen && (
         <Modal title="Operator PIN required" onClose={() => setPinOpen(false)}>

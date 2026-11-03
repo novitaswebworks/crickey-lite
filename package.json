@@ -6,9 +6,9 @@
   "description": "Live cricket scoring with broadcast overlays for vMix and OBS",
   "author": {
     "name": "Novitas WebWorks",
-    "url": "https://github.com/novitaswebworks"
+    "url": "https://novitasweb.works"
   },
-  "homepage": "https://github.com/novitaswebworks",
+  "homepage": "https://novitasweb.works",
   "engines": {
     "node": ">=20"
   },

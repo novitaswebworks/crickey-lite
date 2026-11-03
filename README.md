@@ -1,6 +1,6 @@
 # Crickey Lite
 
-_Developed by [Novitas WebWorks](https://github.com/novitaswebworks)._
+_Developed by [Novitas WebWorks](https://novitasweb.works)._
 
 Live cricket scoring for ONE operator, plus broadcast graphics for **vMix** (primary) and **OBS**. One process, one command, no Docker, no database server, no logins.
 
@@ -103,4 +103,4 @@ Add *Browser Source* with the same URLs: width 1920, height 1080, **Shutdown sou
 * *Logs:* `data/logs/` (7 days kept).
 
 ---
-Developed by [Novitas WebWorks](https://github.com/novitaswebworks).
+Developed by [Novitas WebWorks](https://novitasweb.works).
