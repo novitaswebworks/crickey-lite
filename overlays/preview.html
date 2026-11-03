@@ -19,6 +19,8 @@
   .cell h2 { margin: 0 0 8px; font-size: 12px; font-weight: 700; color: var(--muted); letter-spacing: .14em; text-transform: uppercase; }
   .frame { position: relative; width: 100%; aspect-ratio: 16 / 9; overflow: hidden; border: 1px solid var(--line2); border-radius: 10px; }
   .frame iframe { position: absolute; left: 0; top: 0; width: 1920px; height: 1080px; border: 0; transform-origin: 0 0; }
+  .credit { padding: 14px 20px 22px; text-align: center; font-size: 12px; color: var(--muted); }
+  .credit a { color: var(--cream); font-weight: 600; }
 </style>
 </head>
 <body>
@@ -31,6 +33,7 @@
   <span id="saveNote" style="color:var(--accent)"></span>
 </header>
 <div class="grid" id="grid"></div>
+<footer class="credit">Developed by <a href="https://github.com/novitaswebworks" target="_blank" rel="noopener">Novitas WebWorks</a></footer>
 <script>
   var NAMES = ['scorebug', 'batters', 'bowler', 'partnership', 'four', 'six', 'wicket', 'new-batter', 'over-summary', 'target', 'scorecard', 'versus', 'result', 'lower-third', 'milestone'];
   var grid = document.getElementById('grid');

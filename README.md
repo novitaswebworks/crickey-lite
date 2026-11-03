@@ -1,5 +1,7 @@
 # Crickey Lite
 
+_Developed by [Novitas WebWorks](https://github.com/novitaswebworks)._
+
 Live cricket scoring for ONE operator, plus broadcast graphics for **vMix** (primary) and **OBS**. One process, one command, no Docker, no database server, no logins.
 
 ## 5-minute quick start
@@ -99,3 +101,6 @@ Add *Browser Source* with the same URLs: width 1920, height 1080, **Shutdown sou
 * *Overlay blank in vMix:* open the same URL with `&debug=1&force=1` in a browser; check the Overlays page "On air" state; the overlay stays transparent by design while disconnected.
 * *Native SQLite fails to build:* the app logs it and uses the JSON store automatically.
 * *Logs:* `data/logs/` (7 days kept).
+
+---
+Developed by [Novitas WebWorks](https://github.com/novitaswebworks).

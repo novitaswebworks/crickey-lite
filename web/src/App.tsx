@@ -56,6 +56,9 @@ export function App() {
         {page === 'history' && <History goto={goto} />}
         {page === 'settings' && <Settings />}
       </main>
+      <footer className="no-print border-t border-ink-700 py-3 text-center text-xs text-slate-500">
+        Developed by <a className="font-semibold text-slate-300 underline decoration-ink-500 underline-offset-2 hover:text-accent" href="https://github.com/novitaswebworks" target="_blank" rel="noopener">Novitas WebWorks</a>
+      </footer>
       {pinOpen && (
         <Modal title="Operator PIN required" onClose={() => setPinOpen(false)}>
           <input className="input" type="password" autoFocus placeholder="PIN" value={pin} onChange={(e) => setPin(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && void unlock()} />
