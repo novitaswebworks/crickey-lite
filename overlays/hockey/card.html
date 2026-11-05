@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Hockey Card</title>
+<link rel="stylesheet" href="../base.css">
+<link rel="stylesheet" href="../components.css">
+<style>
+.card-panel { width: 44rem; border-left: .6rem solid var(--card-color, var(--accent)); }
+.card-head { display: flex; align-items: center; justify-content: space-between; padding: .6rem 1.2rem; border-bottom: .06rem solid var(--bg2); font-size: 1.1rem; font-weight: 700; letter-spacing: .15em; color: var(--card-color, var(--accent)); }
+.card-body { padding: .9rem 1.4rem 1.2rem; display: flex; flex-direction: column; gap: .3rem; }
+.card-name { font-size: 2.6rem; font-weight: 800; line-height: 1.1; }
+.card-sub { font-size: 1.35rem; color: var(--muted); }
+</style>
+</head>
+<body>
+<div id="stage">
+<div class="panel card-panel" id="cardPanel">
+  <div class="card-head">
+    <span id="cardBadge">DISCIPLINARY PENALTY</span>
+    <span id="teamShort" class="num"></span>
+  </div>
+  <div class="card-body">
+    <div class="card-name ell" id="playerName"></div>
+    <div class="card-sub" id="cardDetail"></div>
+  </div>
+</div>
+</div>
+<script src="../overlay-client.js"></script>
+<script>
+Overlay.init({
+  name: 'hockey/card',
+  transient: true,
+  sample: function () {
+    return {
+      playerName: 'Christopher Ruhr',
+      cardKind: 'yellow',
+      durationLabel: '5m',
+      teamShort: 'GER'
+    };
+  },
+  render: function (s, p, U) {
+    if (!p) return;
+    var kind = p.cardKind || 'green';
+    var color = kind === 'red' ? '#ef4444' : kind === 'yellow' ? '#eab308' : '#22c55e';
+    U.el('cardPanel').style.setProperty('--card-color', color);
+
+    var label = (kind === 'red' ? '🟥 RED CARD' : kind === 'yellow' ? '🟨 YELLOW CARD' : '🟩 GREEN CARD');
+    U.setText(U.el('cardBadge'), label);
+    U.setText(U.el('teamShort'), p.teamShort || '');
+    U.setText(U.el('playerName'), p.playerName || 'Player Name');
+
+    var detail = (p.durationLabel === 'Permanent' || kind === 'red') ? 'Permanent Match Ejection' : p.durationLabel + ' Sin-Bin Suspension';
+    U.setText(U.el('cardDetail'), detail);
+  }
+});
+</script>
+</body>
+</html>

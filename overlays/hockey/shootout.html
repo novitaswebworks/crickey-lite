@@ -1,0 +1,118 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Hockey Shootout</title>
+<link rel="stylesheet" href="../base.css">
+<link rel="stylesheet" href="../components.css">
+<style>
+.so-panel { width: 50rem; border-left: .6rem solid var(--accent); }
+.so-head { display: flex; align-items: center; justify-content: space-between; padding: .7rem 1.4rem; border-bottom: .06rem solid var(--bg2); font-size: 1.15rem; font-weight: 700; letter-spacing: .15em; color: var(--accent); }
+.so-body { padding: 1.2rem 1.6rem; display: flex; flex-direction: column; gap: 1rem; }
+.so-row { display: flex; align-items: center; justify-content: space-between; }
+.so-team { display: flex; align-items: center; gap: .8rem; width: 14rem; }
+.so-team .badge { width: 2.6rem; height: 2.6rem; font-size: 1.2rem; }
+.so-team .tn { font-size: 1.8rem; font-weight: 800; }
+.so-dots { display: flex; gap: .6rem; }
+.so-dot { width: 2.2rem; height: 2.2rem; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 1.1rem; font-weight: 900; background: var(--bg2); border: .1rem solid rgba(255,255,255,.15); color: #fff; }
+.so-dot.scored { background: #22c55e; border-color: #22c55e; }
+.so-dot.missed { background: #ef4444; border-color: #ef4444; }
+.so-score { font-size: 2.4rem; font-weight: 900; width: 3.5rem; text-align: right; font-family: monospace; }
+</style>
+</head>
+<body>
+<div id="stage">
+<div class="panel so-panel">
+  <div class="so-head">
+    <span>SHOOTOUT COMPETITION</span>
+    <span id="soStatus">ROUND 1-5</span>
+  </div>
+  <div class="so-body">
+    <div class="so-row">
+      <div class="so-team">
+        <span id="badgeA" class="badge"></span>
+        <span id="nameA" class="tn"></span>
+      </div>
+      <div class="so-dots" id="dotsA"></div>
+      <div class="so-score num" id="scoreA">0</div>
+    </div>
+    <div class="so-row">
+      <div class="so-team">
+        <span id="badgeB" class="badge"></span>
+        <span id="nameB" class="tn"></span>
+      </div>
+      <div class="so-dots" id="dotsB"></div>
+      <div class="so-score num" id="scoreB">0</div>
+    </div>
+  </div>
+</div>
+</div>
+<script src="../overlay-client.js"></script>
+<script>
+Overlay.init({
+  name: 'hockey/shootout',
+  sample: function () {
+    return {
+      matchId: 'sample',
+      teams: {
+        A: { name: 'India', shortName: 'IND', color: '#1d4ed8' },
+        B: { name: 'Germany', shortName: 'GER', color: '#ea580c' }
+      },
+      shootout: {
+        active: true,
+        scoreA: 2,
+        scoreB: 1,
+        rounds: [
+          { round: 1, attemptA: { scored: true }, attemptB: { scored: false } },
+          { round: 2, attemptA: { scored: true }, attemptB: { scored: true } }
+        ]
+      }
+    };
+  },
+  render: function (s, p, U) {
+    if (!s) return;
+    var tA = s.teams ? s.teams.A : null;
+    var tB = s.teams ? s.teams.B : null;
+    if (!tA || !tB) return;
+
+    U.teamBadge(U.el('badgeA'), tA);
+    U.setText(U.el('nameA'), tA.shortName);
+    U.teamBadge(U.el('badgeB'), tB);
+    U.setText(U.el('nameB'), tB.shortName);
+
+    var so = s.shootout || { scoreA: 0, scoreB: 0, rounds: [] };
+    U.setText(U.el('scoreA'), so.scoreA !== undefined ? so.scoreA : 0);
+    U.setText(U.el('scoreB'), so.scoreB !== undefined ? so.scoreB : 0);
+
+    // Build 5 attempt dots for Team A and Team B
+    var totalRounds = Math.max(5, (so.rounds || []).length);
+    var dotsAHtml = '';
+    var dotsBHtml = '';
+    var roundsMap = {};
+    (so.rounds || []).forEach(function (r) { roundsMap[r.round] = r; });
+
+    for (var i = 1; i <= totalRounds; i++) {
+      var rData = roundsMap[i];
+      // Team A dot
+      if (rData && rData.attemptA) {
+        dotsAHtml += '<span class="so-dot ' + (rData.attemptA.scored ? 'scored' : 'missed') + '">' + (rData.attemptA.scored ? '✓' : '✕') + '</span>';
+      } else {
+        dotsAHtml += '<span class="so-dot"></span>';
+      }
+      // Team B dot
+      if (rData && rData.attemptB) {
+        dotsBHtml += '<span class="so-dot ' + (rData.attemptB.scored ? 'scored' : 'missed') + '">' + (rData.attemptB.scored ? '✓' : '✕') + '</span>';
+      } else {
+        dotsBHtml += '<span class="so-dot"></span>';
+      }
+    }
+
+    U.el('dotsA').innerHTML = dotsAHtml;
+    U.el('dotsB').innerHTML = dotsBHtml;
+    U.setText(U.el('soStatus'), totalRounds > 5 ? 'SUDDEN DEATH' : 'BEST OF 5');
+  }
+});
+</script>
+</body>
+</html>

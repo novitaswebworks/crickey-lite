@@ -83,6 +83,7 @@ export type Settings = z.infer<typeof settingsSchema>;
 
 export const DEFAULT_AUTO_HIDE: Record<string, number> = {
   four: 5000, six: 5000, wicket: 6000, 'new-batter': 6000, 'over-summary': 7000, milestone: 5000,
+  'hockey/goal': 7000, 'hockey/card': 5000, 'hockey/penalty-corner': 4000,
 };
 
 function deepMerge(base: unknown, patch: unknown): unknown {

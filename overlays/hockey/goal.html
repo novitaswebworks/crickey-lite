@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Hockey Goal</title>
+<link rel="stylesheet" href="../base.css">
+<link rel="stylesheet" href="../components.css">
+</head>
+<body>
+<div id="stage" class="mid">
+<div class="panel sting four">
+  <div class="word">GOAL!</div>
+  <div class="info">
+    <div class="big-name ell" id="scorer"></div>
+    <div class="sub" id="assist"></div>
+    <div class="sub num" id="scoreline"></div>
+  </div>
+</div>
+</div>
+<script src="../overlay-client.js"></script>
+<script>
+Overlay.init({
+  name: 'hockey/goal',
+  transient: true,
+  sample: function () {
+    return {
+      scorer: 'Harmanpreet Singh',
+      assist: 'Manpreet Singh',
+      kind: 'PC',
+      time: '12:45 (Q2)',
+      scoreA: 2, scoreB: 1,
+      teamShort: 'IND'
+    };
+  },
+  render: function (s, p, U) {
+    if (!p) return;
+    U.setText(U.el('scorer'), p.scorer || 'Goal Scorer');
+    var subText = p.kind ? p.kind + ' Goal' : '';
+    if (p.assist) subText += '  ·  Assist: ' + p.assist;
+    if (p.time) subText += '  ·  ' + p.time;
+    U.setText(U.el('assist'), subText);
+    var line = (p.teamShort ? p.teamShort + '  ·  ' : '') + 'Score: ' + (p.scoreA !== undefined ? p.scoreA : 0) + ' - ' + (p.scoreB !== undefined ? p.scoreB : 0);
+    U.setText(U.el('scoreline'), line);
+  }
+});
+</script>
+</body>
+</html>

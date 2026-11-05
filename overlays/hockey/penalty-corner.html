@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Penalty Corner</title>
+<link rel="stylesheet" href="../base.css">
+<link rel="stylesheet" href="../components.css">
+<style>
+.pc-sting { width: 50rem; }
+.pc-sting .word { font-size: 3rem; min-width: 18rem; }
+</style>
+</head>
+<body>
+<div id="stage" class="mid">
+<div class="panel sting milestone pc-sting">
+  <div class="word">PENALTY CORNER</div>
+  <div class="info">
+    <div class="big-name ell" id="team"></div>
+    <div class="sub" id="detail">Awarded Penalty Corner</div>
+  </div>
+</div>
+</div>
+<script src="../overlay-client.js"></script>
+<script>
+Overlay.init({
+  name: 'hockey/penalty-corner',
+  transient: true,
+  sample: function () {
+    return {
+      teamShort: 'IND',
+      teamName: 'India'
+    };
+  },
+  render: function (s, p, U) {
+    if (!p) return;
+    U.setText(U.el('team'), (p.teamName || p.teamShort || 'Attacking Team').toUpperCase());
+    U.setText(U.el('detail'), 'PENALTY CORNER AWARDED');
+  }
+});
+</script>
+</body>
+</html>

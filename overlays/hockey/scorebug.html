@@ -1,0 +1,129 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Hockey Scorebug</title>
+<link rel="stylesheet" href="../base.css">
+<link rel="stylesheet" href="../components.css">
+<style>
+.h-sb { display: flex; align-items: stretch; gap: .5rem; height: 5rem; }
+.h-team { display: flex; align-items: center; gap: .9rem; background: var(--bg); border: var(--border); border-radius: var(--radius); box-shadow: var(--shadow); padding: 0 1.2rem; }
+.h-team.side-a { border-left: .5rem solid var(--ta, var(--accent)); }
+.h-team.side-b { border-right: .5rem solid var(--tb, var(--accent)); }
+.h-short { font-size: 2rem; font-weight: 700; letter-spacing: .06em; line-height: 1; }
+.h-score { font-size: 3.2rem; font-weight: 800; line-height: 1; min-width: 2.4rem; text-align: center; }
+.h-mid { display: flex; flex-direction: column; align-items: center; justify-content: center; background: var(--bg); border: var(--border); border-radius: var(--radius); box-shadow: var(--shadow); padding: 0 1.6rem; min-width: 12rem; }
+.h-clock { font-size: 2.4rem; font-weight: 800; letter-spacing: .08em; line-height: 1; font-family: monospace; }
+.h-clock.running { color: var(--accent); }
+.h-period { font-size: 1.05rem; font-weight: 700; color: var(--muted); letter-spacing: .12em; margin-top: .15rem; }
+.h-card-tag { display: inline-flex; align-items: center; gap: .25rem; font-size: .85rem; font-weight: 700; padding: .15rem .5rem; border-radius: .4rem; line-height: 1; }
+.h-card-tag.yellow { background: #eab308; color: #111; }
+.h-card-tag.green { background: #22c55e; color: #fff; }
+.h-card-tag.red { background: #ef4444; color: #fff; }
+</style>
+</head>
+<body>
+<div id="stage">
+<div class="panel sb">
+  <div class="h-sb">
+    <div class="h-team side-a">
+      <span id="badgeA" class="badge"></span>
+      <span id="nameA" class="h-short"></span>
+      <span id="scoreA" class="h-score num">0</span>
+    </div>
+    <div class="h-mid">
+      <div id="clock" class="h-clock num">15:00</div>
+      <div id="period" class="h-period">Q1</div>
+    </div>
+    <div class="h-team side-b">
+      <span id="scoreB" class="h-score num">0</span>
+      <span id="nameB" class="h-short"></span>
+      <span id="badgeB" class="badge"></span>
+    </div>
+  </div>
+  <div class="sb-foot" id="footRow">
+    <span id="foot"></span>
+    <span class="tags" id="cardsRow"></span>
+  </div>
+</div>
+</div>
+<script src="../overlay-client.js"></script>
+<script>
+Overlay.init({
+  name: 'hockey/scorebug',
+  sample: function () {
+    return {
+      matchId: 'sample',
+      sport: 'hockey',
+      status: 'live',
+      periodLabel: 'Q2',
+      scoreA: 2, scoreB: 1,
+      clock: { displayMs: 540000, running: true },
+      teams: {
+        A: { name: 'India', shortName: 'IND', color: '#1d4ed8' },
+        B: { name: 'Germany', shortName: 'GER', color: '#ea580c' }
+      },
+      suspensions: [
+        { teamSide: 'B', playerName: 'Muller', kind: 'yellow', remainingMs: 140000, active: true }
+      ]
+    };
+  },
+  render: function (s, p, U) {
+    if (!s) return;
+    U.empty(false);
+    var tA = s.teams ? s.teams.A : null;
+    var tB = s.teams ? s.teams.B : null;
+    if (!tA || !tB) return;
+
+    var r = document.documentElement.style;
+    r.setProperty('--ta', tA.color || '#1d4ed8');
+    r.setProperty('--tb', tB.color || '#ea580c');
+
+    U.teamBadge(U.el('badgeA'), tA);
+    U.setText(U.el('nameA'), tA.shortName);
+    U.setText(U.el('scoreA'), s.scoreA !== undefined ? s.scoreA : 0);
+
+    U.teamBadge(U.el('badgeB'), tB);
+    U.setText(U.el('nameB'), tB.shortName);
+    U.setText(U.el('scoreB'), s.scoreB !== undefined ? s.scoreB : 0);
+
+    // Clock display
+    var clk = s.clock || {};
+    var ms = clk.displayMs !== undefined ? clk.displayMs : 900000;
+    var totalSec = Math.max(0, Math.floor(ms / 1000));
+    var m = Math.floor(totalSec / 60);
+    var sec = totalSec % 60;
+    var timeStr = (m < 10 ? '0' : '') + m + ':' + (sec < 10 ? '0' : '') + sec;
+    U.setText(U.el('clock'), timeStr);
+    U.el('clock').classList.toggle('running', !!clk.running);
+
+    U.setText(U.el('period'), s.periodLabel || 'Q1');
+
+    // Sin-bin suspensions
+    var suspHtml = '';
+    var susp = s.suspensions || [];
+    for (var i = 0; i < susp.length; i++) {
+      var item = susp[i];
+      if (item.active) {
+        var remSec = Math.max(0, Math.floor(item.remainingMs / 1000));
+        var remM = Math.floor(remSec / 60);
+        var remS = remSec % 60;
+        var remStr = (remM < 10 ? '0' : '') + remM + ':' + (remS < 10 ? '0' : '') + remS;
+        var teamShort = s.teams[item.teamSide] ? s.teams[item.teamSide].shortName : item.teamSide;
+        suspHtml += '<span class="h-card-tag ' + item.kind + '">' + (item.kind === 'red' ? '🟥' : item.kind === 'yellow' ? '🟨' : '🟩') + ' ' + teamShort + ' ' + (item.kind === 'red' ? 'OUT' : remStr) + '</span>';
+      }
+    }
+    U.el('cardsRow').innerHTML = suspHtml;
+
+    var foot = '';
+    if (s.status === 'completed' && s.result) foot = s.result.text;
+    else if (s.status === 'shootout') foot = 'SHOOTOUT COMPETITION';
+    else if (s.status === 'break') foot = s.statusText || 'BREAK';
+    else if (s.penaltyCorners) foot = 'PC: ' + tA.shortName + ' ' + (s.penaltyCorners.A || 0) + ' · ' + (s.penaltyCorners.B || 0) + ' ' + tB.shortName;
+    U.setText(U.el('foot'), foot);
+  }
+});
+</script>
+</body>
+</html>

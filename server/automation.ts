@@ -14,6 +14,16 @@ export function wireAutomation(matches: MatchService, overlays: OverlayService, 
     if (kind !== 'append' || !fx) return;
     const auto = settings.get().autoTrigger;
     const show = (name: Parameters<OverlayService['show']>[0]) => overlays.show(name, payloadFor(name, state), matchId);
+
+    // Auto-trigger hockey transient overlays
+    if ((state as unknown as { sport?: string }).sport === 'hockey') {
+      const hFx = (state as unknown as { effects?: { goal?: unknown; card?: unknown; penaltyCorner?: unknown } }).effects;
+      if (hFx?.goal) show('hockey/goal');
+      if (hFx?.card) show('hockey/card');
+      if (hFx?.penaltyCorner) show('hockey/penalty-corner');
+      return;
+    }
+
     if (fx.boundary === 4) { if (auto.four) show('four'); vmix.fire('four'); obs.fire('four'); }
     if (fx.boundary === 6) { if (auto.six) show('six'); vmix.fire('six'); obs.fire('six'); }
     if (fx.wicket) { if (auto.wicket) show('wicket'); vmix.fire('wicket'); obs.fire('wicket'); }
