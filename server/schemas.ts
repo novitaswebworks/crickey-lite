@@ -51,11 +51,12 @@ export const playerSchema = z.object({
 });
 
 export const matchSchema = z.object({
+  sport: z.enum(['cricket', 'hockey']).default('cricket'),
   title: z.string().trim().max(100).default(''),
   venue: z.string().trim().max(100).default(''),
   teamAId: z.number().int(),
   teamBId: z.number().int(),
-  overs: z.number().int().min(1).max(100),
+  overs: z.number().int().min(1).max(100).default(20),
   playersPerSide: z.number().int().min(2).max(11),
   tossWinner: z.enum(['A', 'B']).nullable().default(null),
   tossDecision: z.enum(['bat', 'bowl']).nullable().default(null),
@@ -63,4 +64,7 @@ export const matchSchema = z.object({
   xiB: z.array(z.number().int()).default([]),
   powerplayOvers: z.number().int().min(0).max(50).optional(),
   limitBowlerOvers: z.boolean().optional(),
+  // Hockey-specific fields (ignored for cricket)
+  periods: z.number().int().min(2).max(4).optional(),
+  periodDurationMins: z.number().int().min(5).max(60).optional(),
 });

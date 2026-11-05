@@ -4,6 +4,24 @@ import { SettingsService } from './settings';
 import { Doc, Store } from './store';
 import { MatchPlayerRow, MatchRow, PlayerRow, TeamRow } from './types';
 
+/** Minimal stub state for a hockey match (Phase 1 placeholder, Phase 2 replaces with real engine). */
+function hockeyStubState(m: Doc<MatchRow>, teamA: Doc<TeamRow>, teamB: Doc<TeamRow>, eventCount: number): LiveState {
+  return {
+    matchId: String(m.id), title: m.title, venue: m.venue, overs: 0,
+    status: eventCount === 0 ? 'setup' : 'live',
+    statusText: 'Hockey match',
+    sport: 'hockey',
+    teams: {
+      A: { name: teamA.name, shortName: teamA.shortName, color: teamA.color, logo: teamA.logoPath ?? null },
+      B: { name: teamB.name, shortName: teamB.shortName, color: teamB.color, logo: teamB.logoPath ?? null },
+    },
+    innings: [], current: null,
+    toss: m.tossWinner && m.tossDecision ? { winner: m.tossWinner, decision: m.tossDecision, text: '' } : null,
+    result: null, canSuperOver: false, eventCount,
+    invariantErrors: [], effects: null,
+  } as unknown as LiveState;
+}
+
 export class ApiError extends Error {
   constructor(public status: number, public code: string, message: string) {
     super(message);
@@ -11,6 +29,7 @@ export class ApiError extends Error {
 }
 
 export interface MatchInput {
+  sport: 'cricket' | 'hockey';
   title: string;
   venue: string;
   teamAId: number;
@@ -23,12 +42,15 @@ export interface MatchInput {
   xiB: number[];
   powerplayOvers?: number;
   limitBowlerOvers?: boolean;
+  periods?: number;
+  periodDurationMins?: number;
 }
 
 export interface MatchSummary {
   id: number;
   title: string;
   venue: string;
+  sport: 'cricket' | 'hockey';
   overs: number;
   teamA: { name: string; shortName: string; color: string };
   teamB: { name: string; shortName: string; color: string };
@@ -98,8 +120,20 @@ export class MatchService extends EventEmitter {
   private load(id: number): Entry {
     let e = this.cache.get(id);
     if (!e) {
-      const config = this.buildConfig(id);
+      const m = this.row(id);
       const events = this.store.events.list(id);
+      // Hockey matches use their own engine (Phase 2+). For now return a stub so the
+      // cricket engine is never called with hockey event payloads.
+      if ((m.sport ?? 'cricket') === 'hockey') {
+        const teamA = this.team(m.teamAId);
+        const teamB = this.team(m.teamBId);
+        const stubState = hockeyStubState(m, teamA, teamB, events.length);
+        const config = this.buildConfig(id);
+        e = { config, events, state: stubState };
+        this.cache.set(id, e);
+        return e;
+      }
+      const config = this.buildConfig(id);
       e = { config, events, state: this.compute(config, events) };
       this.cache.set(id, e);
     }
@@ -198,7 +232,7 @@ export class MatchService extends EventEmitter {
       }
       const score = (state?.innings ?? []).map((i) => `${state!.teams[i.battingSide].shortName} ${i.runs}/${i.wickets} (${i.overs})`).join(' · ');
       return {
-        id: m.id, title: m.title, venue: m.venue, overs: m.overs,
+        id: m.id, title: m.title, venue: m.venue, sport: m.sport ?? 'cricket', overs: m.overs,
         teamA: { name: teamA.name, shortName: teamA.shortName, color: teamA.color },
         teamB: { name: teamB.name, shortName: teamB.shortName, color: teamB.color },
         status: state?.status ?? 'setup', statusText: state?.statusText ?? '', score, createdAt: m.createdAt,
@@ -237,9 +271,11 @@ export class MatchService extends EventEmitter {
     this.validate(input);
     const s = this.settings.get();
     const row = this.store.insert<MatchRow>('matches', {
+      sport: input.sport ?? 'cricket',
       title: input.title, venue: input.venue, teamAId: input.teamAId, teamBId: input.teamBId, overs: input.overs,
       playersPerSide: input.playersPerSide, tossWinner: input.tossWinner, tossDecision: input.tossDecision,
       settings: { powerplayOvers: input.powerplayOvers ?? s.powerplayOvers, limitBowlerOvers: input.limitBowlerOvers ?? s.limitBowlerOvers },
+      hockeySettings: input.sport === 'hockey' ? { periods: input.periods ?? 4, periodDurationMins: input.periodDurationMins ?? 15 } : undefined,
       createdAt: new Date().toISOString(),
     });
     this.writeXi(row.id, input);
@@ -258,6 +294,7 @@ export class MatchService extends EventEmitter {
       title: input.title, venue: input.venue, teamAId: input.teamAId, teamBId: input.teamBId, overs: input.overs,
       playersPerSide: input.playersPerSide, tossWinner: input.tossWinner, tossDecision: input.tossDecision,
       settings: { powerplayOvers: input.powerplayOvers ?? cur.settings.powerplayOvers, limitBowlerOvers: input.limitBowlerOvers ?? cur.settings.limitBowlerOvers },
+      hockeySettings: (cur.sport ?? 'cricket') === 'hockey' ? { periods: input.periods ?? cur.hockeySettings?.periods ?? 4, periodDurationMins: input.periodDurationMins ?? cur.hockeySettings?.periodDurationMins ?? 15 } : undefined,
     })!;
     if (!started) this.writeXi(id, input);
     this.reload(id);

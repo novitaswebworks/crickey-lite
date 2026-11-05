@@ -9,6 +9,7 @@ import { ExtraKind, ExtraModal, HelpModal, ScoringPad } from '../live/ScoringPad
 import { InningsCard } from '../live/Scorecard';
 import { promptText, useScorer } from '../live/scorer';
 import { WicketWizard } from '../live/WicketWizard';
+import { HockeyLive } from '../live/hockey/HockeyLive';
 
 type ModalState = null | { kind: 'extra'; extra: ExtraKind } | { kind: 'wicket' } | { kind: 'bowler'; mid?: boolean } | { kind: 'batter' } | { kind: 'fix' } | { kind: 'help' } | { kind: 'edit'; id: number } | { kind: 'card' };
 
@@ -51,6 +52,10 @@ export function Live({ goto }: { goto: (page: string) => void }) {
       </Empty>
     );
   }
+
+  // Route hockey matches to the dedicated scoring interface.
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  if ((state as any).sport === 'hockey') return <HockeyLive />;
 
   const close = () => { dismissed.current = needsKey; setModal(null); };
   const closeFree = () => setModal(null);

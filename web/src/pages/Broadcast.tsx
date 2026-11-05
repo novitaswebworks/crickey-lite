@@ -3,11 +3,22 @@ import { ApiFail, Info, MatchSummary, get, post, put } from '../api';
 import { useRealtime } from '../realtime';
 import { Field, copyText, toast } from '../ui';
 
-const TRANSIENT = ['four', 'six', 'wicket', 'new-batter', 'over-summary', 'milestone'];
+const TRANSIENT = ['four', 'six', 'wicket', 'new-batter', 'over-summary', 'milestone', 'hockey/goal', 'hockey/card', 'hockey/penalty-corner'];
 const LABELS: Record<string, string> = {
+  // Cricket
   scorebug: 'Scorebug', batters: 'Batters', bowler: 'Bowler', partnership: 'Partnership', four: 'Four', six: 'Six', wicket: 'Wicket', 'new-batter': 'New batter',
-  'over-summary': 'Over summary', target: 'Target / chase', scorecard: 'Scorecard', versus: 'Versus (pre-match)', result: 'Result', 'lower-third': 'Lower third', milestone: 'Milestone',
+  'over-summary': 'Over summary', target: 'Target / chase', scorecard: 'Scorecard', milestone: 'Milestone',
+  // Shared
+  versus: 'Versus (pre-match)', result: 'Result', 'lower-third': 'Lower third',
+  // Hockey
+  'hockey/scorebug': '🏑 Scorebug', 'hockey/goal': '🏑 Goal sting', 'hockey/card': '🏑 Card',
+  'hockey/penalty-corner': '🏑 Penalty corner', 'hockey/shootout': '🏑 Shootout tracker',
 };
+
+/** Overlays that are always shown regardless of sport. */
+const SHARED_OVERLAYS = new Set(['versus', 'result', 'lower-third']);
+/** Overlays that belong to hockey only. */
+const HOCKEY_OVERLAYS = new Set(['hockey/scorebug', 'hockey/goal', 'hockey/card', 'hockey/penalty-corner', 'hockey/shootout']);
 
 const fail = (e: unknown) => toast((e as ApiFail).message, 'error');
 
@@ -41,7 +52,16 @@ export function Broadcast() {
   }, []);
 
   const base = info?.publicBaseUrl || location.origin;
-  const names = info?.overlays ?? [];
+  const allNames = info?.overlays ?? [];
+  // Determine sport of the active match — fall back to cricket
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const activeSport: 'cricket' | 'hockey' = (state as any)?.sport ?? 'cricket';
+  // Filter overlay list: show sport-specific + shared overlays
+  const names = allNames.filter((n) => {
+    if (SHARED_OVERLAYS.has(n)) return true;
+    if (HOCKEY_OVERLAYS.has(n)) return activeSport === 'hockey';
+    return activeSport === 'cricket';
+  });
   const url = (n: string) => {
     const q = new URLSearchParams();
     if (fixed && matchId !== null) q.set('match', String(matchId));

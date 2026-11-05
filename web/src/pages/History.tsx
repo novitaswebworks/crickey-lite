@@ -23,8 +23,8 @@ export function History({ goto }: { goto: (p: string) => void }) {
       {list?.map((m) => (
         <div key={m.id} className={`card flex flex-wrap items-center gap-4 ${m.active ? '!border-accent' : ''}`}>
           <div className="min-w-0 flex-1">
-            <div className="font-bold">{m.title || `Match #${m.id}`} {m.active && <span className="ml-2 rounded bg-accent px-2 py-0.5 text-xs text-ink-950">ACTIVE</span>}</div>
-            <div className="text-sm text-slate-300">{m.teamA.name} v {m.teamB.name} · {m.overs} ov{m.venue ? ` · ${m.venue}` : ''}</div>
+            <div className="font-bold">{m.title || `Match #${m.id}`}{' '}{m.active && <span className="ml-2 rounded bg-accent px-2 py-0.5 text-xs text-ink-950">ACTIVE</span>}{' '}<span className="rounded px-1.5 py-0.5 text-xs font-bold bg-ink-600 text-slate-300">{m.sport === 'hockey' ? '🏑 Hockey' : '🏏 Cricket'}</span></div>
+            <div className="text-sm text-slate-300">{m.teamA.name} v {m.teamB.name}{m.sport === 'cricket' ? ` · ${m.overs} ov` : ''}{m.venue ? ` · ${m.venue}` : ''}</div>
             <div className="text-sm text-slate-400">{m.score || 'Not started'} · {m.statusText}</div>
           </div>
           <div className="flex flex-wrap gap-2">

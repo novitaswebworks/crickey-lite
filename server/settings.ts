@@ -1,14 +1,26 @@
 import { z } from 'zod';
 import { Store } from './store';
 
-export const OVERLAY_NAMES = [
+export const CRICKET_OVERLAY_NAMES = [
   'scorebug', 'batters', 'bowler', 'partnership', 'four', 'six', 'wicket', 'new-batter', 'over-summary',
   'target', 'scorecard', 'versus', 'result', 'lower-third', 'milestone',
 ] as const;
+
+export const HOCKEY_OVERLAY_NAMES = [
+  'hockey/scorebug', 'hockey/goal', 'hockey/card', 'hockey/penalty-corner', 'hockey/shootout',
+] as const;
+
+/** All overlays across both sports. */
+export const OVERLAY_NAMES = [...CRICKET_OVERLAY_NAMES, ...HOCKEY_OVERLAY_NAMES] as const;
 export type OverlayName = (typeof OVERLAY_NAMES)[number];
 
+/** Cricket overlays that fire on a ball event and hide themselves after a timer. */
+const CRICKET_TRANSIENT: OverlayName[] = ['four', 'six', 'wicket', 'new-batter', 'over-summary', 'milestone'];
+/** Hockey overlays that fire on a game event and hide themselves after a timer. */
+const HOCKEY_TRANSIENT: OverlayName[] = ['hockey/goal', 'hockey/card', 'hockey/penalty-corner'];
+
 /** Overlays that fire on an event and hide themselves after a timer. */
-export const TRANSIENT: OverlayName[] = ['four', 'six', 'wicket', 'new-batter', 'over-summary', 'milestone'];
+export const TRANSIENT: OverlayName[] = [...CRICKET_TRANSIENT, ...HOCKEY_TRANSIENT];
 
 const mapping = z.object({
   input: z.string().default(''),

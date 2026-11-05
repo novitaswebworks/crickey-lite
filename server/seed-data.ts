@@ -19,6 +19,7 @@ export function seedDemo(ctx: Context): { matchId: number; teamIds: [number, num
     ids.push(row.id);
   }
   const match = matches.create({
+    sport: 'cricket',
     title: 'Demo T20 · Final', venue: 'Riverside Oval', teamAId: ids[0], teamBId: ids[1], overs: 20, playersPerSide: 11,
     tossWinner: 'A', tossDecision: 'bat', xiA: [], xiB: [],
   });

@@ -17,6 +17,7 @@ export interface PlayerRow {
 export interface MatchRow {
   title: string;
   venue: string;
+  sport: 'cricket' | 'hockey';
   teamAId: number;
   teamBId: number;
   overs: number;
@@ -24,6 +25,8 @@ export interface MatchRow {
   tossWinner: 'A' | 'B' | null;
   tossDecision: 'bat' | 'bowl' | null;
   settings: { powerplayOvers: number; limitBowlerOvers: boolean };
+  /** Hockey-specific match configuration; undefined for cricket matches. */
+  hockeySettings?: { periods: number; periodDurationMins: number };
   createdAt: string;
 }
 

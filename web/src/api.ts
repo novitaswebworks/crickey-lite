@@ -56,7 +56,7 @@ export async function uploadLogo(teamId: number, file: File): Promise<void> {
 export interface TeamDto { id: number; name: string; shortName: string; color: string; logoPath: string | null; playerCount?: number }
 export interface PlayerDto { id: number; teamId: number; name: string; shortName: string; shirtNo: string; role: string; orderIdx: number }
 export interface MatchSummary {
-  id: number; title: string; venue: string; overs: number;
+  id: number; title: string; venue: string; sport: 'cricket' | 'hockey'; overs: number;
   teamA: { name: string; shortName: string; color: string }; teamB: { name: string; shortName: string; color: string };
   status: LiveState['status']; statusText: string; score: string; createdAt: string; active: boolean; eventCount: number;
 }
