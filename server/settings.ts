@@ -8,6 +8,7 @@ export const CRICKET_OVERLAY_NAMES = [
 
 export const HOCKEY_OVERLAY_NAMES = [
   'hockey/scorebug', 'hockey/goal', 'hockey/card', 'hockey/penalty-corner', 'hockey/shootout',
+  'hockey/starting11', 'hockey/substitutes', 'hockey/scoreboard-banner',
 ] as const;
 
 /** All overlays across both sports. */
@@ -17,7 +18,10 @@ export type OverlayName = (typeof OVERLAY_NAMES)[number];
 /** Cricket overlays that fire on a ball event and hide themselves after a timer. */
 const CRICKET_TRANSIENT: OverlayName[] = ['four', 'six', 'wicket', 'new-batter', 'over-summary', 'milestone'];
 /** Hockey overlays that fire on a game event and hide themselves after a timer. */
-const HOCKEY_TRANSIENT: OverlayName[] = ['hockey/goal', 'hockey/card', 'hockey/penalty-corner'];
+const HOCKEY_TRANSIENT: OverlayName[] = [
+  'hockey/goal', 'hockey/card', 'hockey/penalty-corner',
+  'hockey/starting11', 'hockey/substitutes', 'hockey/scoreboard-banner',
+];
 
 /** Overlays that fire on an event and hide themselves after a timer. */
 export const TRANSIENT: OverlayName[] = [...CRICKET_TRANSIENT, ...HOCKEY_TRANSIENT];
@@ -45,6 +49,10 @@ export const settingsSchema = z.object({
   defaultOvers: z.number().int().min(1).max(100).default(20),
   powerplayOvers: z.number().int().min(0).max(50).default(6),
   limitBowlerOvers: z.boolean().default(true),
+  defaultHockeyPeriods: z.number().int().min(2).max(4).default(4),
+  defaultHockeyPeriodDurationMins: z.number().int().min(5).max(60).default(15),
+  tournament: z.string().default('FIH PRO LEAGUE'),
+  sponsor: z.string().default('Dream11'),
   theme: z.enum(['classic', 'neon', 'minimal']).default('classic'),
   publicBaseUrl: z.string().default(''),
   /** What the operator last picked on the Overlays page and the preview page (theme itself is `theme`). */
@@ -62,6 +70,9 @@ export const settingsSchema = z.object({
     milestone: z.boolean().default(true),
     overSummary: z.boolean().default(false),
     newBatter: z.boolean().default(false),
+    hockeyGoal: z.boolean().default(true),
+    hockeyCard: z.boolean().default(true),
+    hockeyPenaltyCorner: z.boolean().default(true),
   }).prefault({}),
   vmix: z.object({
     enabled: z.boolean().default(false),
@@ -82,8 +93,11 @@ export const settingsSchema = z.object({
 export type Settings = z.infer<typeof settingsSchema>;
 
 export const DEFAULT_AUTO_HIDE: Record<string, number> = {
+  // Cricket
   four: 5000, six: 5000, wicket: 6000, 'new-batter': 6000, 'over-summary': 7000, milestone: 5000,
+  // Hockey
   'hockey/goal': 7000, 'hockey/card': 5000, 'hockey/penalty-corner': 4000,
+  'hockey/starting11': 15000, 'hockey/substitutes': 15000, 'hockey/scoreboard-banner': 10000,
 };
 
 function deepMerge(base: unknown, patch: unknown): unknown {

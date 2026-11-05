@@ -89,6 +89,7 @@ export const teamSchema = z.object({
   name: z.string().trim().min(1).max(60),
   shortName: z.string().trim().min(2).max(5).transform((s) => s.toUpperCase()),
   color: z.string().regex(/^#[0-9a-fA-F]{6}$/, 'Use a hex colour such as #1d4ed8'),
+  coach: z.string().trim().max(60).optional().default(''),
 });
 
 export const playerSchema = z.object({
@@ -96,12 +97,16 @@ export const playerSchema = z.object({
   shortName: z.string().trim().max(12).default(''),
   shirtNo: z.string().trim().max(4).default(''),
   role: z.string().trim().max(24).default(''),
+  isCaptain: z.boolean().optional().default(false),
+  photoPath: z.string().nullable().optional(),
 });
 
 export const matchSchema = z.object({
   sport: z.enum(['cricket', 'hockey']).default('cricket'),
   title: z.string().trim().max(100).default(''),
   venue: z.string().trim().max(100).default(''),
+  tournament: z.string().trim().max(100).optional(),
+  sponsor: z.string().trim().max(100).optional(),
   teamAId: z.number().int(),
   teamBId: z.number().int(),
   overs: z.number().int().min(1).max(100).default(20),

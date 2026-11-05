@@ -15,6 +15,8 @@ export interface MatchInput {
   sport: 'cricket' | 'hockey';
   title: string;
   venue: string;
+  tournament?: string;
+  sponsor?: string;
   teamAId: number;
   teamBId: number;
   overs: number;
@@ -84,16 +86,43 @@ export class MatchService extends EventEmitter {
 
   buildHockeyConfig(id: number): HockeyMatchConfig {
     const m = this.row(id);
+    const globalSettings = this.settings.get();
     const side = (s: Side): HockeyMatchConfig['teams'][Side] => {
       const t = this.team(s === 'A' ? m.teamAId : m.teamBId);
       const squad = this.store.list<PlayerRow>('players', t.id).sort((a, b) => a.orderIdx - b.orderIdx || a.id - b.id);
       const rows = this.store.list<MatchPlayerRow>('matchPlayers', id).filter((r) => r.side === s && r.inXi).sort((a, b) => a.battingOrder - b.battingOrder);
       const chosen = rows.length ? rows.map((r) => squad.find((p) => p.id === r.playerId)).filter((p): p is Doc<PlayerRow> => !!p) : squad;
-      const players: PlayerRef[] = chosen.map((p) => ({ id: String(p.id), name: p.name, shortName: p.shortName || undefined }));
-      return { id: String(t.id), name: t.name, shortName: t.shortName, color: t.color, logo: t.logoPath, players };
+      const subs = squad.filter((p) => !chosen.some((c) => c.id === p.id));
+      const mapPlayer = (p: Doc<PlayerRow>): PlayerRef => ({
+        id: String(p.id),
+        name: p.name,
+        shortName: p.shortName || undefined,
+        shirtNo: p.shirtNo || undefined,
+        role: p.role || undefined,
+        photoPath: p.photoPath || null,
+        isCaptain: !!p.isCaptain,
+      });
+      const starting11 = chosen.map(mapPlayer);
+      const substitutes = subs.map(mapPlayer);
+      return {
+        id: String(t.id),
+        name: t.name,
+        shortName: t.shortName,
+        color: t.color,
+        logo: t.logoPath,
+        coach: t.coach || null,
+        players: starting11,
+        starting11,
+        substitutes,
+      };
     };
     return {
-      id: String(id), title: m.title, venue: m.venue, playersPerSide: m.playersPerSide,
+      id: String(id),
+      title: m.title,
+      venue: m.venue,
+      tournament: m.tournament || globalSettings.tournament || 'FIH PRO LEAGUE',
+      sponsor: m.sponsor || globalSettings.sponsor || 'Dream11',
+      playersPerSide: m.playersPerSide,
       teams: { A: side('A'), B: side('B') },
       settings: {
         periods: m.hockeySettings?.periods ?? 4,
@@ -288,10 +317,13 @@ export class MatchService extends EventEmitter {
     const s = this.settings.get();
     const row = this.store.insert<MatchRow>('matches', {
       sport: input.sport ?? 'cricket',
-      title: input.title, venue: input.venue, teamAId: input.teamAId, teamBId: input.teamBId, overs: input.overs,
+      title: input.title, venue: input.venue,
+      tournament: input.tournament ?? s.tournament,
+      sponsor: input.sponsor ?? s.sponsor,
+      teamAId: input.teamAId, teamBId: input.teamBId, overs: input.overs,
       playersPerSide: input.playersPerSide, tossWinner: input.tossWinner, tossDecision: input.tossDecision,
       settings: { powerplayOvers: input.powerplayOvers ?? s.powerplayOvers, limitBowlerOvers: input.limitBowlerOvers ?? s.limitBowlerOvers },
-      hockeySettings: input.sport === 'hockey' ? { periods: input.periods ?? 4, periodDurationMins: input.periodDurationMins ?? 15 } : undefined,
+      hockeySettings: input.sport === 'hockey' ? { periods: input.periods ?? s.defaultHockeyPeriods ?? 4, periodDurationMins: input.periodDurationMins ?? s.defaultHockeyPeriodDurationMins ?? 15 } : undefined,
       createdAt: new Date().toISOString(),
     });
     this.writeXi(row.id, input);
@@ -307,7 +339,10 @@ export class MatchService extends EventEmitter {
       throw new ApiError(409, 'MATCH_STARTED', 'Teams, overs and players per side cannot change once the match has started.');
     }
     const row = this.store.update<MatchRow>('matches', id, {
-      title: input.title, venue: input.venue, teamAId: input.teamAId, teamBId: input.teamBId, overs: input.overs,
+      title: input.title, venue: input.venue,
+      tournament: input.tournament ?? cur.tournament,
+      sponsor: input.sponsor ?? cur.sponsor,
+      teamAId: input.teamAId, teamBId: input.teamBId, overs: input.overs,
       playersPerSide: input.playersPerSide, tossWinner: input.tossWinner, tossDecision: input.tossDecision,
       settings: { powerplayOvers: input.powerplayOvers ?? cur.settings.powerplayOvers, limitBowlerOvers: input.limitBowlerOvers ?? cur.settings.limitBowlerOvers },
       hockeySettings: (cur.sport ?? 'cricket') === 'hockey' ? { periods: input.periods ?? cur.hockeySettings?.periods ?? 4, periodDurationMins: input.periodDurationMins ?? cur.hockeySettings?.periodDurationMins ?? 15 } : undefined,

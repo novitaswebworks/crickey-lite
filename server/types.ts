@@ -3,6 +3,7 @@ export interface TeamRow {
   shortName: string;
   color: string;
   logoPath: string | null;
+  coach?: string | null;
 }
 
 export interface PlayerRow {
@@ -12,12 +13,16 @@ export interface PlayerRow {
   shirtNo: string;
   role: string;
   orderIdx: number;
+  photoPath?: string | null;
+  isCaptain?: boolean;
 }
 
 export interface MatchRow {
   title: string;
   venue: string;
   sport: 'cricket' | 'hockey';
+  tournament?: string;
+  sponsor?: string;
   teamAId: number;
   teamBId: number;
   overs: number;

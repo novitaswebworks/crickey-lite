@@ -4,16 +4,31 @@ import { Field, toast } from '../ui';
 
 interface VmixEvent { input: string; overlay: number; action: 'off' | 'in' | 'toggle' | 'inout'; durationMs: number }
 interface S {
-  defaultOvers: number; powerplayOvers: number; limitBowlerOvers: boolean; theme: string; publicBaseUrl: string;
+  defaultOvers: number; powerplayOvers: number; limitBowlerOvers: boolean;
+  defaultHockeyPeriods: number; defaultHockeyPeriodDurationMins: number;
+  tournament: string; sponsor: string;
+  theme: string; publicBaseUrl: string;
   autoHideMs: Record<string, number>;
   autoHideDefaults: Record<string, number>;
-  autoTrigger: Record<'four' | 'six' | 'wicket' | 'milestone' | 'overSummary' | 'newBatter', boolean>;
+  autoTrigger: Record<'four' | 'six' | 'wicket' | 'milestone' | 'overSummary' | 'newBatter' | 'hockeyGoal' | 'hockeyCard' | 'hockeyPenaltyCorner', boolean>;
   vmix: { enabled: boolean; host: string; mappings: { input: string; field: string; template: string }[]; events: Record<'four' | 'six' | 'wicket', VmixEvent> };
   obs: { enabled: boolean; host: string; port: number; password: string; passwordSet?: boolean; rules: { event: 'wicket' | 'four' | 'six'; scene: string; seconds: number }[] };
   pin: string; pinSet?: boolean;
 }
 
-const AUTO: [keyof S['autoTrigger'], string][] = [['four', 'Four'], ['six', 'Six'], ['wicket', 'Wicket'], ['milestone', 'Milestone'], ['overSummary', 'Over summary'], ['newBatter', 'New batter']];
+const CRICKET_AUTO: [keyof S['autoTrigger'], string][] = [
+  ['four', '🏏 Four'], ['six', '🏏 Six'], ['wicket', '🏏 Wicket'],
+  ['milestone', '🏏 Milestone'], ['overSummary', '🏏 Over summary'], ['newBatter', '🏏 New batter'],
+];
+const HOCKEY_AUTO: [keyof S['autoTrigger'], string][] = [
+  ['hockeyGoal', '🏑 Goal sting'], ['hockeyCard', '🏑 Card banner'], ['hockeyPenaltyCorner', '🏑 Penalty corner flare'],
+];
+
+const OVERLAY_TITLES: Record<string, string> = {
+  four: '🏏 Four', six: '🏏 Six', wicket: '🏏 Wicket', 'new-batter': '🏏 New batter', 'over-summary': '🏏 Over summary', milestone: '🏏 Milestone',
+  'hockey/goal': '🏑 Goal sting', 'hockey/card': '🏑 Card banner', 'hockey/penalty-corner': '🏑 Penalty corner flare',
+  'hockey/starting11': '🏑 Starting 11 formation', 'hockey/substitutes': '🏑 Substitutes bench', 'hockey/scoreboard-banner': '🏑 Scoreboard banner',
+};
 
 function Section({ title, children }: { title: string; children: ReactNode }) {
   return <section className="card"><h2 className="mb-3 text-lg font-bold">{title}</h2><div className="grid gap-3 sm:grid-cols-2">{children}</div></section>;
@@ -43,23 +58,50 @@ export function Settings() {
     <div className="mx-auto flex max-w-4xl flex-col gap-4 p-4">
       <div className="flex items-center justify-between"><h1 className="text-2xl font-black">Settings</h1><button className="btn btn-primary" onClick={() => void save()}>Save settings</button></div>
 
-      <Section title="Match defaults">
-        <Field label="Default overs per innings"><input className="input" type="number" min={1} value={s.defaultOvers} onChange={(e) => up({ defaultOvers: Number(e.target.value) })} /></Field>
-        <Field label="Powerplay overs"><input className="input" type="number" min={0} value={s.powerplayOvers} onChange={(e) => up({ powerplayOvers: Number(e.target.value) })} /></Field>
-        <label className="flex items-center gap-3 text-sm"><input type="checkbox" className="h-5 w-5" checked={s.limitBowlerOvers} onChange={(e) => up({ limitBowlerOvers: e.target.checked })} /> Limit each bowler to ceil(overs ÷ 5) overs</label>
+      <Section title="Tournament &amp; Broadcast Branding">
+        <Field label="Tournament / League title (e.g. FIH PRO LEAGUE)"><input className="input" placeholder="FIH PRO LEAGUE" value={s.tournament ?? ''} onChange={(e) => up({ tournament: e.target.value })} /></Field>
+        <Field label="Broadcast sponsor (e.g. Dream11 or polytan)"><input className="input" placeholder="Dream11" value={s.sponsor ?? ''} onChange={(e) => up({ sponsor: e.target.value })} /></Field>
         <Field label="Default overlay theme"><select className="input" value={s.theme} onChange={(e) => up({ theme: e.target.value })}><option>classic</option><option>neon</option><option>minimal</option></select></Field>
-        <p className="text-xs text-slate-400 sm:col-span-2">Powerplay and bowler limit apply to matches created after saving. Overlay URLs carry their own <code>?theme=</code>.</p>
       </Section>
 
-      <Section title="Auto-triggers (overlays that fire by themselves)">
-        {AUTO.map(([k, label]) => (
-          <label key={k} className="flex items-center gap-3 text-sm"><input type="checkbox" className="h-5 w-5" checked={s.autoTrigger[k]} onChange={(e) => up({ autoTrigger: { ...s.autoTrigger, [k]: e.target.checked } })} /> {label}</label>
-        ))}
+      <Section title="Cricket Match Defaults">
+        <Field label="Default overs per innings"><input className="input" type="number" min={1} value={s.defaultOvers} onChange={(e) => up({ defaultOvers: Number(e.target.value) })} /></Field>
+        <Field label="Powerplay overs"><input className="input" type="number" min={0} value={s.powerplayOvers} onChange={(e) => up({ powerplayOvers: Number(e.target.value) })} /></Field>
+        <label className="flex items-center gap-3 text-sm sm:col-span-2"><input type="checkbox" className="h-5 w-5" checked={s.limitBowlerOvers} onChange={(e) => up({ limitBowlerOvers: e.target.checked })} /> Limit each bowler to ceil(overs ÷ 5) overs</label>
+      </Section>
+
+      <Section title="Hockey Match Defaults">
+        <Field label="Default period format">
+          <select className="input" value={s.defaultHockeyPeriods ?? 4} onChange={(e) => up({ defaultHockeyPeriods: Number(e.target.value) })}>
+            <option value={4}>4 Quarters (FIH standard)</option>
+            <option value={2}>2 Halves (club / amateur)</option>
+          </select>
+        </Field>
+        <Field label="Default period duration (minutes)">
+          <input className="input" type="number" min={5} max={60} value={s.defaultHockeyPeriodDurationMins ?? 15} onChange={(e) => up({ defaultHockeyPeriodDurationMins: Number(e.target.value) })} />
+        </Field>
+      </Section>
+
+      <Section title="Auto-triggers (Overlays that fire automatically)">
+        <div className="flex flex-col gap-2">
+          <div className="text-xs font-bold uppercase text-slate-400">Cricket triggers</div>
+          {CRICKET_AUTO.map(([k, label]) => (
+            <label key={k} className="flex items-center gap-3 text-sm"><input type="checkbox" className="h-5 w-5" checked={s.autoTrigger[k]} onChange={(e) => up({ autoTrigger: { ...s.autoTrigger, [k]: e.target.checked } })} /> {label}</label>
+          ))}
+        </div>
+        <div className="flex flex-col gap-2">
+          <div className="text-xs font-bold uppercase text-slate-400">Hockey triggers</div>
+          {HOCKEY_AUTO.map(([k, label]) => (
+            <label key={k} className="flex items-center gap-3 text-sm"><input type="checkbox" className="h-5 w-5" checked={s.autoTrigger[k]} onChange={(e) => up({ autoTrigger: { ...s.autoTrigger, [k]: e.target.checked } })} /> {label}</label>
+          ))}
+        </div>
       </Section>
 
       <Section title="Auto-hide durations (seconds)">
         {Object.keys(s.autoHideDefaults).map((k) => (
-          <Field key={k} label={k}><input className="input" type="number" min={1} max={60} value={(s.autoHideMs[k] ?? s.autoHideDefaults[k]!) / 1000} onChange={(e) => up({ autoHideMs: { ...s.autoHideMs, [k]: Math.round(Number(e.target.value) * 1000) } })} /></Field>
+          <Field key={k} label={OVERLAY_TITLES[k] ?? k}>
+            <input className="input" type="number" min={1} max={60} value={(s.autoHideMs[k] ?? s.autoHideDefaults[k]!) / 1000} onChange={(e) => up({ autoHideMs: { ...s.autoHideMs, [k]: Math.round(Number(e.target.value) * 1000) } })} />
+          </Field>
         ))}
       </Section>
 

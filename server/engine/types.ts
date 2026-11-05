@@ -5,6 +5,10 @@ export interface PlayerRef {
   id: PlayerId;
   name: string;
   shortName?: string;
+  shirtNo?: string;
+  role?: string;
+  photoPath?: string | null;
+  isCaptain?: boolean;
 }
 
 export interface TeamConfig {
@@ -13,7 +17,10 @@ export interface TeamConfig {
   shortName: string;
   color: string;
   logo?: string | null;
+  coach?: string | null;
   players: PlayerRef[];
+  starting11?: PlayerRef[];
+  substitutes?: PlayerRef[];
 }
 
 export interface MatchSettings {

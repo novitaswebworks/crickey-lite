@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import { ApiFail, PlayerDto, TeamDto, del, get, post, put, uploadLogo } from '../api';
+import { ApiFail, PlayerDto, TeamDto, del, get, post, put, uploadLogo, uploadPlayerPhoto } from '../api';
 import { Empty, Field, toast } from '../ui';
 
 const fail = (e: unknown) => toast((e as ApiFail).message, 'error');
@@ -51,7 +51,7 @@ export function Teams() {
 }
 
 function TeamEditor({ team, onChange }: { team: TeamDto; onChange: () => Promise<void> }) {
-  const [form, setForm] = useState({ name: team.name, shortName: team.shortName, color: team.color });
+  const [form, setForm] = useState({ name: team.name, shortName: team.shortName, color: team.color, coach: team.coach ?? '' });
   const [players, setPlayers] = useState<PlayerDto[]>([]);
   const [bulk, setBulk] = useState('');
   const load = useCallback(async () => setPlayers(await get<PlayerDto[]>(`/api/teams/${team.id}/players`)), [team.id]);
@@ -60,38 +60,83 @@ function TeamEditor({ team, onChange }: { team: TeamDto; onChange: () => Promise
   const save = async () => { try { await put(`/api/teams/${team.id}`, form); toast('Team saved'); await onChange(); } catch (e) { fail(e); } };
   const remove = async () => { if (!window.confirm(`Delete ${team.name} and its players?`)) return; try { await del(`/api/teams/${team.id}`); await onChange(); } catch (e) { fail(e); } };
   const addBulk = async () => { try { await post(`/api/teams/${team.id}/players`, { names: bulk.split('\n') }); setBulk(''); await load(); await onChange(); toast('Players added'); } catch (e) { fail(e); } };
-  const savePlayer = async (p: PlayerDto) => { try { await put(`/api/players/${p.id}`, { name: p.name, shortName: p.shortName, shirtNo: p.shirtNo, role: p.role }); } catch (e) { fail(e); await load(); } };
+  const savePlayer = async (p: PlayerDto) => {
+    try {
+      await put(`/api/players/${p.id}`, { name: p.name, shortName: p.shortName, shirtNo: p.shirtNo, role: p.role, isCaptain: !!p.isCaptain });
+    } catch (e) {
+      fail(e);
+      await load();
+    }
+  };
   const move = async (i: number, d: number) => {
     const ids = players.map((p) => p.id);
     [ids[i], ids[i + d]] = [ids[i + d], ids[i]];
     await put(`/api/teams/${team.id}/players/order`, { ids });
     await load();
   };
-  const patch = (id: number, k: keyof PlayerDto, v: string) => setPlayers((l) => l.map((p) => (p.id === id ? { ...p, [k]: v } : p)));
+  const patch = (id: number, k: keyof PlayerDto, v: unknown) => setPlayers((l) => l.map((p) => (p.id === id ? { ...p, [k]: v } : p)));
 
   return (
     <section className="flex flex-col gap-4">
-      <div className="card grid gap-3 sm:grid-cols-[1fr_120px_80px_auto]">
+      <div className="card grid gap-3 sm:grid-cols-[1fr_120px_80px_1fr_auto]">
         <Field label="Full name"><input className="input" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} /></Field>
         <Field label="Short name"><input className="input" maxLength={5} value={form.shortName} onChange={(e) => setForm({ ...form, shortName: e.target.value })} /></Field>
         <Field label="Colour"><input type="color" className="h-[44px] w-full cursor-pointer rounded-lg border border-ink-600 bg-ink-900" value={form.color} onChange={(e) => setForm({ ...form, color: e.target.value })} /></Field>
+        <Field label="Coach name"><input className="input" placeholder="e.g. Graham Reid" value={form.coach} onChange={(e) => setForm({ ...form, coach: e.target.value })} /></Field>
         <div className="flex items-end gap-2"><button className="btn btn-primary" onClick={() => void save()}>Save</button><button className="btn btn-ghost !text-red-400" onClick={() => void remove()}>Delete</button></div>
-        <div className="flex items-center gap-3 sm:col-span-4">
+        <div className="flex items-center gap-3 sm:col-span-5">
           {team.logoPath ? <img src={team.logoPath} alt="logo" className="h-14 w-14 rounded bg-white/5 object-contain" /> : <div className="flex h-14 w-14 items-center justify-center rounded bg-ink-900 text-xs text-slate-500">No logo</div>}
           <label className="btn cursor-pointer">Upload logo<input type="file" accept="image/*" className="hidden" onChange={async (e) => { const f = e.target.files?.[0]; if (!f) return; try { await uploadLogo(team.id, f); toast('Logo uploaded'); await onChange(); } catch (er) { fail(er); } }} /></label>
           {team.logoPath && <button className="btn btn-ghost" onClick={async () => { await del(`/api/teams/${team.id}/logo`); await onChange(); }}>Remove logo</button>}
         </div>
       </div>
       <div className="card">
-        <div className="label">Players — batting order top to bottom</div>
+        <div className="label">Players — batting / lineup order top to bottom</div>
         <div className="flex flex-col gap-1.5">
           {players.length === 0 && <p className="text-sm text-slate-500">No players yet. Paste names below, one per line.</p>}
           {players.map((p, i) => (
-            <div key={p.id} className="grid grid-cols-[28px_1fr_70px_110px_auto] items-center gap-2">
+            <div key={p.id} className="grid grid-cols-[28px_40px_1fr_60px_110px_40px_auto] items-center gap-2">
               <span className="text-center text-xs text-slate-500">{i + 1}</span>
-              <input className="input" value={p.name} onChange={(e) => patch(p.id, 'name', e.target.value)} onBlur={() => void savePlayer(p)} />
-              <input className="input" placeholder="#" value={p.shirtNo} onChange={(e) => patch(p.id, 'shirtNo', e.target.value)} onBlur={() => void savePlayer(p)} />
-              <input className="input" placeholder="Role" value={p.role} onChange={(e) => patch(p.id, 'role', e.target.value)} onBlur={() => void savePlayer(p)} />
+              {/* Photo upload/preview */}
+              <label className="relative flex h-9 w-9 cursor-pointer items-center justify-center overflow-hidden rounded-full border border-ink-600 bg-ink-900 hover:border-accent" title="Upload bust photo">
+                {p.photoPath ? (
+                  <img src={p.photoPath} alt="" className="h-full w-full object-cover" />
+                ) : (
+                  <span className="text-xs text-slate-400">📷</span>
+                )}
+                <input
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={async (e) => {
+                    const f = e.target.files?.[0];
+                    if (!f) return;
+                    try {
+                      await uploadPlayerPhoto(p.id, f);
+                      toast('Photo uploaded');
+                      await load();
+                    } catch (er) {
+                      fail(er);
+                    }
+                  }}
+                />
+              </label>
+              <input className="input" placeholder="Full name" value={p.name} onChange={(e) => patch(p.id, 'name', e.target.value)} onBlur={() => void savePlayer(p)} />
+              <input className="input" placeholder="#" value={p.shirtNo} onChange={(e) => patch(p.id, 'shirtNo', e.target.value)} onBlur={() => void savePlayer(p)} title="Jersey Number" />
+              <input className="input" placeholder="Role (GK/DEF/MID/FWD)" value={p.role} onChange={(e) => patch(p.id, 'role', e.target.value)} onBlur={() => void savePlayer(p)} />
+              {/* Captain toggle */}
+              <button
+                type="button"
+                className={`btn !min-h-[36px] !px-2 text-xs font-bold ${p.isCaptain ? '!bg-amber-500 !text-ink-950 font-black' : 'btn-ghost text-slate-500'}`}
+                title="Toggle Captain (C)"
+                onClick={async () => {
+                  const updated = !p.isCaptain;
+                  patch(p.id, 'isCaptain', updated);
+                  await savePlayer({ ...p, isCaptain: updated });
+                }}
+              >
+                C
+              </button>
               <div className="flex gap-1">
                 <button className="btn !px-3" disabled={i === 0} onClick={() => void move(i, -1)} aria-label="Move up">↑</button>
                 <button className="btn !px-3" disabled={i === players.length - 1} onClick={() => void move(i, 1)} aria-label="Move down">↓</button>

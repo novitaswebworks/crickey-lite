@@ -1,0 +1,406 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Hockey Starting 11</title>
+<link rel="stylesheet" href="../base.css">
+<link rel="stylesheet" href="../components.css">
+<style>
+* { box-sizing: border-box; }
+body { margin: 0; padding: 0; overflow: hidden; background: transparent; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+#stage { width: 100vw; height: 100vh; position: relative; display: flex; flex-direction: column; align-items: center; justify-content: flex-end; padding-bottom: 2.5rem; }
+
+/* 3D Pitch Container */
+.pitch-container {
+  position: absolute;
+  top: 4vh;
+  width: 900px;
+  height: 720px;
+  perspective: 1000px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.pitch {
+  width: 820px;
+  height: 660px;
+  position: relative;
+  transform: rotateX(28deg);
+  background: linear-gradient(180deg, #0d3875 0%, #082d62 50%, #051d42 100%);
+  border: 3px solid rgba(255, 255, 255, 0.85);
+  border-radius: 8px;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.75), inset 0 0 100px rgba(0, 0, 0, 0.5);
+  overflow: hidden;
+}
+
+/* Pitch Markings */
+.pitch-line { position: absolute; background: rgba(255, 255, 255, 0.75); }
+.pitch-center-line { top: 50%; left: 0; width: 100%; height: 2px; }
+.pitch-23m-top { top: 25%; left: 0; width: 100%; height: 2px; border-top: 1px dashed rgba(255, 255, 255, 0.5); background: none; }
+.pitch-23m-bottom { bottom: 25%; left: 0; width: 100%; height: 2px; border-top: 1px dashed rgba(255, 255, 255, 0.5); background: none; }
+
+/* Goal D / Circles */
+.pitch-circle-top {
+  position: absolute;
+  top: -80px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 380px;
+  height: 220px;
+  border: 2px solid rgba(255, 255, 255, 0.8);
+  border-radius: 0 0 190px 190px;
+}
+.pitch-circle-bottom {
+  position: absolute;
+  bottom: -80px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 380px;
+  height: 220px;
+  border: 2px solid rgba(255, 255, 255, 0.8);
+  border-radius: 190px 190px 0 0;
+}
+
+/* Player grid layer mapped inside the perspective */
+.pitch-players {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-around;
+  padding: 1.5rem 2rem 2rem 2rem;
+  z-index: 10;
+}
+
+.formation-row {
+  display: flex;
+  justify-content: space-around;
+  align-items: center;
+  width: 100%;
+}
+
+/* Player Card */
+.player-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  position: relative;
+  transform: rotateX(-28deg); /* Counter-rotate so player stands upright! */
+  transition: transform 0.3s ease;
+}
+
+.player-img-wrap {
+  width: 82px;
+  height: 82px;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  margin-bottom: -10px;
+  z-index: 2;
+  filter: drop-shadow(0 6px 8px rgba(0, 0, 0, 0.6));
+}
+
+.player-img {
+  max-width: 82px;
+  max-height: 82px;
+  object-fit: contain;
+}
+
+.player-silhouette {
+  width: 58px;
+  height: 58px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #1e3a8a, #3b82f6);
+  border: 2px solid rgba(255, 255, 255, 0.7);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  font-weight: 800;
+  font-size: 1.3rem;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+}
+
+/* Slanted Tag Badge */
+.player-tag {
+  display: flex;
+  align-items: stretch;
+  height: 26px;
+  filter: drop-shadow(0 3px 6px rgba(0, 0, 0, 0.4));
+  transform: skewX(-14deg);
+}
+
+.player-num {
+  background: #ffffff;
+  color: #d90429;
+  font-weight: 900;
+  font-size: 0.95rem;
+  padding: 0 0.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-top-left-radius: 4px;
+  border-bottom-left-radius: 4px;
+}
+
+.player-name {
+  background: linear-gradient(90deg, #0284c7 0%, #0369a1 100%);
+  color: #ffffff;
+  font-weight: 800;
+  font-size: 0.85rem;
+  letter-spacing: 0.02em;
+  padding: 0 0.7rem;
+  display: flex;
+  align-items: center;
+  white-space: nowrap;
+  border-top-right-radius: 4px;
+  border-bottom-right-radius: 4px;
+}
+.player-tag * { transform: skewX(14deg); }
+
+/* Bottom Bar */
+.bottom-bar {
+  display: flex;
+  align-items: center;
+  gap: 1.5rem;
+  z-index: 20;
+}
+
+.league-badge {
+  background: #0f172a;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 6px;
+  padding: 0.6rem 1.2rem;
+  color: #ffffff;
+  font-weight: 900;
+  font-size: 1.1rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.5);
+}
+
+.team-plate {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+  border-left: 6px solid var(--team-color, #2563eb);
+  border-right: 6px solid var(--team-color, #2563eb);
+  padding: 0.5rem 3rem;
+  border-radius: 8px;
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.6);
+  min-width: 440px;
+}
+
+.team-header {
+  display: flex;
+  align-items: center;
+  gap: 0.8rem;
+}
+
+.team-name {
+  font-size: 1.8rem;
+  font-weight: 900;
+  color: #ffffff;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.team-coach {
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: #94a3b8;
+  letter-spacing: 0.03em;
+  margin-top: 0.1rem;
+}
+
+.sponsor-badge {
+  background: #0f172a;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 6px;
+  padding: 0.6rem 1.2rem;
+  color: #38bdf8;
+  font-weight: 800;
+  font-size: 1.1rem;
+  letter-spacing: 0.05em;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.5);
+}
+</style>
+</head>
+<body>
+<div id="stage">
+  <div class="pitch-container">
+    <div class="pitch">
+      <div class="pitch-line pitch-center-line"></div>
+      <div class="pitch-line pitch-23m-top"></div>
+      <div class="pitch-line pitch-23m-bottom"></div>
+      <div class="pitch-circle-top"></div>
+      <div class="pitch-circle-bottom"></div>
+
+      <div class="pitch-players">
+        <!-- Row 1: Goalkeeper -->
+        <div class="formation-row" id="rowGk"></div>
+        <!-- Row 2: Defenders -->
+        <div class="formation-row" id="rowDef"></div>
+        <!-- Row 3: Midfielders -->
+        <div class="formation-row" id="rowMid"></div>
+        <!-- Row 4: Forwards -->
+        <div class="formation-row" id="rowFwd"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="bottom-bar">
+    <div class="league-badge" id="tournament">FIH PRO LEAGUE</div>
+    <div class="team-plate" id="teamPlate">
+      <div class="team-header">
+        <span id="teamBadge" class="badge"></span>
+        <span class="team-name" id="teamName">INDIA</span>
+      </div>
+      <div class="team-coach" id="teamCoach">Coach: Graham Reid</div>
+    </div>
+    <div class="sponsor-badge" id="sponsor">polytan</div>
+  </div>
+</div>
+
+<script src="../overlay-client.js"></script>
+<script>
+function buildPlayerCard(p, teamColor) {
+  var card = document.createElement('div');
+  card.className = 'player-card';
+
+  var imgWrap = document.createElement('div');
+  imgWrap.className = 'player-img-wrap';
+
+  if (p.photoPath) {
+    var img = document.createElement('img');
+    img.className = 'player-img';
+    img.src = p.photoPath;
+    img.alt = p.name;
+    imgWrap.appendChild(img);
+  } else {
+    var sil = document.createElement('div');
+    sil.className = 'player-silhouette';
+    if (teamColor) sil.style.background = 'linear-gradient(135deg, ' + teamColor + ', #0f172a)';
+    sil.textContent = p.shirtNo ? '#' + p.shirtNo : (p.shortName ? p.shortName.slice(0, 2) : p.name.slice(0, 2));
+    imgWrap.appendChild(sil);
+  }
+  card.appendChild(imgWrap);
+
+  var tag = document.createElement('div');
+  tag.className = 'player-tag';
+
+  var num = document.createElement('div');
+  num.className = 'player-num';
+  num.textContent = p.shirtNo || '-';
+  tag.appendChild(num);
+
+  var name = document.createElement('div');
+  name.className = 'player-name';
+  if (teamColor) name.style.background = teamColor;
+  name.textContent = p.name + (p.isCaptain ? ' (C)' : '');
+  tag.appendChild(name);
+
+  card.appendChild(tag);
+  return card;
+}
+
+Overlay.init({
+  name: 'hockey/starting11',
+  sample: function () {
+    return {
+      matchId: 'sample',
+      sport: 'hockey',
+      tournament: 'FIH PRO LEAGUE',
+      sponsor: 'polytan',
+      side: 'A',
+      teamName: 'India',
+      teamColor: '#0055d4',
+      coach: 'Graham Reid',
+      players: [
+        { id: '1', name: 'P R Sreejesh', shirtNo: '16', role: 'GK' },
+        { id: '2', name: 'Surender Kumar', shirtNo: '6', role: 'DEF' },
+        { id: '3', name: 'Harmanpreet Singh', shirtNo: '13', role: 'DEF' },
+        { id: '4', name: 'Birendra Lakra', shirtNo: '26', role: 'DEF' },
+        { id: '5', name: 'Amit Rohidas', shirtNo: '30', role: 'DEF' },
+        { id: '6', name: 'Raj Kumar Pal', shirtNo: '69', role: 'MID' },
+        { id: '7', name: 'Chinglensana Singh', shirtNo: '29', role: 'MID' },
+        { id: '8', name: 'Manpreet Singh', shirtNo: '7', role: 'MID', isCaptain: true },
+        { id: '9', name: 'Lalit Upadhyay', shirtNo: '14', role: 'FWD' },
+        { id: '10', name: 'Simranjeet Singh', shirtNo: '10', role: 'FWD' },
+        { id: '11', name: 'Vivek Prasad', shirtNo: '32', role: 'FWD' }
+      ]
+    };
+  },
+  render: function (s, p, U) {
+    if (!s) return;
+    U.empty(false);
+
+    // Target team side (URL query ?side=B or data payload)
+    var urlParams = new URLSearchParams(window.location.search);
+    var side = (p && p.side) || urlParams.get('side') || (s && s.side) || 'A';
+    var team = s.teams ? s.teams[side] : null;
+
+    var teamName = (p && p.teamName) || (team ? team.name : 'Team ' + side);
+    var teamColor = (p && p.teamColor) || (team ? team.color : '#0055d4');
+    var coach = (p && p.coach) || (team ? team.coach : '') || '';
+    var tournament = (p && p.tournament) || s.tournament || 'FIH PRO LEAGUE';
+    var sponsor = (p && p.sponsor) || s.sponsor || 'polytan';
+
+    document.documentElement.style.setProperty('--team-color', teamColor);
+
+    U.setText(U.el('tournament'), tournament);
+    U.setText(U.el('teamName'), teamName);
+    U.setText(U.el('teamCoach'), coach ? 'Coach: ' + coach : '');
+    U.el('teamCoach').style.display = coach ? 'block' : 'none';
+    U.setText(U.el('sponsor'), sponsor);
+    if (team) U.teamBadge(U.el('teamBadge'), team);
+
+    var rawPlayers = (p && p.players && p.players.length) ? p.players : (team && team.starting11 && team.starting11.length ? team.starting11 : (team ? team.players : []));
+    var players = rawPlayers.slice(0, 11);
+
+    var gk = [];
+    var def = [];
+    var mid = [];
+    var fwd = [];
+
+    // Categorize by role if present, else standard 1-4-3-3 hockey formation
+    var hasRoles = players.some(function (x) { return x.role && x.role.trim(); });
+    if (hasRoles) {
+      for (var i = 0; i < players.length; i++) {
+        var r = (players[i].role || '').toUpperCase();
+        if (r.indexOf('GK') >= 0 || r.indexOf('GOAL') >= 0) gk.push(players[i]);
+        else if (r.indexOf('DEF') >= 0 || r.indexOf('BACK') >= 0) def.push(players[i]);
+        else if (r.indexOf('MID') >= 0 || r.indexOf('HALF') >= 0) mid.push(players[i]);
+        else fwd.push(players[i]);
+      }
+    } else {
+      if (players.length > 0) gk.push(players[0]);
+      def = players.slice(1, 5);
+      mid = players.slice(5, 8);
+      fwd = players.slice(8, 11);
+    }
+
+    var renderRow = function (containerId, list) {
+      var el = U.el(containerId);
+      el.innerHTML = '';
+      for (var j = 0; j < list.length; j++) {
+        el.appendChild(buildPlayerCard(list[j], teamColor));
+      }
+    };
+
+    renderRow('rowGk', gk);
+    renderRow('rowDef', def);
+    renderRow('rowMid', mid);
+    renderRow('rowFwd', fwd);
+  }
+});
+</script>
+</body>
+</html>

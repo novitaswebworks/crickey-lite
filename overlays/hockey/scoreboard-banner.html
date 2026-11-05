@@ -1,0 +1,222 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Hockey Scoreboard Banner</title>
+<link rel="stylesheet" href="../base.css">
+<link rel="stylesheet" href="../components.css">
+<style>
+* { box-sizing: border-box; }
+body { margin: 0; padding: 0; overflow: hidden; background: transparent; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+#stage { width: 100vw; height: 100vh; position: relative; display: flex; flex-direction: column; align-items: center; justify-content: flex-end; padding-bottom: 3.5rem; }
+
+.banner-wrap {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  filter: drop-shadow(0 15px 35px rgba(0, 0, 0, 0.75));
+  animation: slideUp 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes slideUp {
+  from { opacity: 0; transform: translateY(40px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* Top Tournament Tag */
+.tournament-pill {
+  background: #ffffff;
+  color: #d90429;
+  font-weight: 900;
+  font-size: 0.95rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  padding: 0.35rem 1.6rem;
+  border-radius: 4px 4px 0 0;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
+  z-index: 2;
+  margin-bottom: -1px;
+}
+
+/* Main Score Bar */
+.score-bar {
+  display: flex;
+  align-items: stretch;
+  background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+  border-top: 2px solid rgba(255, 255, 255, 0.3);
+  height: 58px;
+  min-width: 660px;
+  border-radius: 6px;
+  overflow: hidden;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.6);
+  z-index: 3;
+}
+
+.team-section {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 0.8rem;
+  padding: 0 1.5rem;
+}
+
+.team-section.side-a {
+  justify-content: flex-start;
+  border-left: 6px solid var(--ta, #2563eb);
+}
+
+.team-section.side-b {
+  justify-content: flex-end;
+  border-right: 6px solid var(--tb, #ea580c);
+}
+
+.team-full-name {
+  font-size: 1.45rem;
+  font-weight: 900;
+  color: #ffffff;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+/* Center Score Box */
+.score-box {
+  background: #e11d48;
+  color: #ffffff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 2rem;
+  font-size: 1.85rem;
+  font-weight: 900;
+  letter-spacing: 0.1em;
+  font-family: monospace;
+  box-shadow: inset 0 0 15px rgba(0, 0, 0, 0.4);
+  min-width: 130px;
+}
+
+/* Lower Slanted Subtitle Plate */
+.sub-plate {
+  background: #ffffff;
+  color: #0f172a;
+  font-weight: 700;
+  font-size: 0.95rem;
+  letter-spacing: 0.03em;
+  padding: 0.4rem 2.8rem;
+  margin-top: -2px;
+  clip-path: polygon(3% 0%, 97% 0%, 100% 100%, 0% 100%);
+  box-shadow: 0 6px 15px rgba(0, 0, 0, 0.4);
+  z-index: 2;
+  text-align: center;
+  min-width: 480px;
+}
+
+/* Bottom Sponsor Badge */
+.sponsor-pill {
+  background: #dc2626;
+  color: #ffffff;
+  font-weight: 900;
+  font-size: 0.85rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  padding: 0.25rem 1.4rem;
+  border-radius: 0 0 6px 6px;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
+  z-index: 1;
+  margin-top: -1px;
+}
+</style>
+</head>
+<body>
+<div id="stage">
+  <div class="banner-wrap">
+    <div class="tournament-pill" id="tournament">FIH PRO LEAGUE</div>
+
+    <div class="score-bar">
+      <div class="team-section side-a">
+        <span id="badgeA" class="badge"></span>
+        <span class="team-full-name" id="nameA">INDIA</span>
+      </div>
+
+      <div class="score-box" id="score">0 - 0</div>
+
+      <div class="team-section side-b">
+        <span class="team-full-name" id="nameB">AUSTRALIA</span>
+        <span id="badgeB" class="badge"></span>
+      </div>
+    </div>
+
+    <div class="sub-plate" id="subtitle">Live from Kalinga Stadium, Bhubaneswar</div>
+    <div class="sponsor-pill" id="sponsor">Dream11</div>
+  </div>
+</div>
+
+<script src="../overlay-client.js"></script>
+<script>
+Overlay.init({
+  name: 'hockey/scoreboard-banner',
+  sample: function () {
+    return {
+      matchId: 'sample',
+      sport: 'hockey',
+      tournament: 'FIH PRO LEAGUE',
+      sponsor: 'Dream11',
+      scoreA: 1,
+      scoreB: 0,
+      periodLabel: 'Q2',
+      status: 'live',
+      statusText: 'Q2 · Live',
+      venue: 'Kalinga Stadium, Bhubaneswar',
+      teams: {
+        A: { name: 'India', shortName: 'IND', color: '#0055d4' },
+        B: { name: 'Australia', shortName: 'AUS', color: '#ea580c' }
+      }
+    };
+  },
+  render: function (s, p, U) {
+    if (!s) return;
+    U.empty(false);
+
+    var tA = s.teams ? s.teams.A : null;
+    var tB = s.teams ? s.teams.B : null;
+    if (!tA || !tB) return;
+
+    var r = document.documentElement.style;
+    r.setProperty('--ta', tA.color || '#2563eb');
+    r.setProperty('--tb', tB.color || '#ea580c');
+
+    U.teamBadge(U.el('badgeA'), tA);
+    U.setText(U.el('nameA'), tA.name);
+    U.teamBadge(U.el('badgeB'), tB);
+    U.setText(U.el('nameB'), tB.name);
+
+    var scoreA = s.scoreA !== undefined ? s.scoreA : 0;
+    var scoreB = s.scoreB !== undefined ? s.scoreB : 0;
+    U.setText(U.el('score'), scoreA + ' - ' + scoreB);
+
+    var tournament = (p && p.tournament) || s.tournament || 'FIH PRO LEAGUE';
+    var sponsor = (p && p.sponsor) || s.sponsor || 'Dream11';
+    U.setText(U.el('tournament'), tournament);
+    U.setText(U.el('sponsor'), sponsor);
+
+    // Dynamic Context Line (Pre-match, quarter break, or result)
+    var subtitle = '';
+    if (s.status === 'completed' && s.result) {
+      subtitle = 'Full Time · ' + s.result.text;
+    } else if (s.status === 'shootout') {
+      subtitle = 'Shootout Competition · ' + (s.shootout ? s.shootout.scoreA + ' - ' + s.shootout.scoreB : '');
+    } else if (s.status === 'break') {
+      subtitle = s.statusText ? s.statusText + ' · Score: ' + scoreA + ' - ' + scoreB : 'End of Quarter';
+    } else if (s.status === 'live') {
+      subtitle = (s.periodLabel ? s.periodLabel + ' · ' : '') + 'Live from ' + (s.venue || 'Stadium');
+    } else {
+      subtitle = 'Live from ' + (s.venue || 'Stadium');
+    }
+
+    if (p && p.subtitle) subtitle = p.subtitle;
+    U.setText(U.el('subtitle'), subtitle);
+  }
+});
+</script>
+</body>
+</html>

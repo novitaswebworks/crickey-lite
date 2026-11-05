@@ -342,6 +342,32 @@ describe('Hockey Engine', () => {
         teamShort: 'IND',
         matchId: 'h1',
       });
+
+      // hockey/starting11 payload
+      const s11Payload = payloadFor('hockey/starting11', state, { side: 'A' });
+      expect(s11Payload).toMatchObject({
+        side: 'A',
+        teamName: 'India',
+        teamShort: 'IND',
+        tournament: 'FIH PRO LEAGUE',
+      });
+
+      // hockey/substitutes payload
+      const subsPayload = payloadFor('hockey/substitutes', state, { side: 'B' });
+      expect(subsPayload).toMatchObject({
+        side: 'B',
+        teamName: 'Germany',
+        teamShort: 'GER',
+      });
+
+      // hockey/scoreboard-banner payload
+      const sbPayload = payloadFor('hockey/scoreboard-banner', state);
+      expect(sbPayload).toMatchObject({
+        scoreA: 1,
+        scoreB: 0,
+        periodLabel: 'Q1',
+        venue: 'National Hockey Stadium',
+      });
     });
 
     it('exports structured hockey fields via flatState() for vMix', () => {

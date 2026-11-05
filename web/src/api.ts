@@ -53,8 +53,17 @@ export async function uploadLogo(teamId: number, file: File): Promise<void> {
   }
 }
 
-export interface TeamDto { id: number; name: string; shortName: string; color: string; logoPath: string | null; playerCount?: number }
-export interface PlayerDto { id: number; teamId: number; name: string; shortName: string; shirtNo: string; role: string; orderIdx: number }
+export async function uploadPlayerPhoto(playerId: number, file: File): Promise<void> {
+  const res = await fetch(`/api/players/${playerId}/photo`, { method: 'POST', headers: { 'content-type': file.type }, body: file });
+  if (!res.ok) {
+    const j = (await res.json().catch(() => ({}))) as { error?: string; code?: string };
+    if (res.status === 401) pinListeners.forEach((f) => f());
+    throw new ApiFail(j.error ?? 'Upload failed', j.code ?? 'ERROR', res.status);
+  }
+}
+
+export interface TeamDto { id: number; name: string; shortName: string; color: string; logoPath: string | null; coach?: string | null; playerCount?: number }
+export interface PlayerDto { id: number; teamId: number; name: string; shortName: string; shirtNo: string; role: string; orderIdx: number; photoPath?: string | null; isCaptain?: boolean }
 export interface MatchSummary {
   id: number; title: string; venue: string; sport: 'cricket' | 'hockey'; overs: number;
   teamA: { name: string; shortName: string; color: string }; teamB: { name: string; shortName: string; color: string };

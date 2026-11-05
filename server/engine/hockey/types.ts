@@ -9,6 +9,8 @@ export interface HockeyMatchConfig {
   id: string;
   title: string;
   venue: string;
+  tournament?: string;
+  sponsor?: string;
   playersPerSide: number;
   teams: Record<Side, TeamConfig>;
   settings: HockeySettings;
@@ -109,6 +111,9 @@ export interface HockeyTeamState {
   shortName: string;
   color: string;
   logo: string | null;
+  coach?: string | null;
+  starting11: PlayerRef[];
+  substitutes: PlayerRef[];
   goals: GoalRecord[];
   cards: CardRecord[];
 }
@@ -132,6 +137,8 @@ export interface HockeyState {
   sport: 'hockey';
   title: string;
   venue: string;
+  tournament?: string;
+  sponsor?: string;
   status: 'prematch' | 'live' | 'break' | 'shootout' | 'completed';
   statusText: string;
   period: number;

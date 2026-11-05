@@ -145,6 +145,29 @@ export function registerCatalogRoutes(app: Express, ctx: Context): void {
     store.remove('players', id);
     res.json({ ok: true });
   });
+  app.post('/api/players/:id/photo', express.raw({ type: 'image/*', limit: '4mb' }), (req, res) => {
+    const id = num(req.params.id);
+    const p = store.get<PlayerRow>('players', id);
+    if (!p) throw new ApiError(404, 'NOT_FOUND', 'Player not found.');
+    const ext = IMAGE_EXT[String(req.headers['content-type']).split(';')[0]];
+    if (!ext || !Buffer.isBuffer(req.body) || !req.body.length) throw new ApiError(400, 'BAD_IMAGE', 'Upload a PNG, JPEG, WebP, GIF or SVG image.');
+    fs.mkdirSync(UPLOAD_DIR, { recursive: true });
+    const name = `player-${id}-${Date.now()}.${ext}`;
+    fs.writeFileSync(path.join(UPLOAD_DIR, name), req.body);
+    if (p.photoPath) fs.rmSync(path.join(UPLOAD_DIR, path.basename(p.photoPath)), { force: true });
+    const out = store.update<PlayerRow>('players', id, { photoPath: `/uploads/${name}` });
+    refreshMatches();
+    res.json(out);
+  });
+  app.delete('/api/players/:id/photo', (req, res) => {
+    const id = num(req.params.id);
+    const p = store.get<PlayerRow>('players', id);
+    if (!p) throw new ApiError(404, 'NOT_FOUND', 'Player not found.');
+    if (p.photoPath) fs.rmSync(path.join(UPLOAD_DIR, path.basename(p.photoPath)), { force: true });
+    const out = store.update<PlayerRow>('players', id, { photoPath: null });
+    refreshMatches();
+    res.json(out);
+  });
 
   // ---- matches -----------------------------------------------------------------------------
   app.get('/api/matches', (_req, res) => res.json(matches.list()));

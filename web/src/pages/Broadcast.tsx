@@ -3,7 +3,11 @@ import { ApiFail, Info, MatchSummary, get, post, put } from '../api';
 import { useRealtime } from '../realtime';
 import { Field, copyText, toast } from '../ui';
 
-const TRANSIENT = ['four', 'six', 'wicket', 'new-batter', 'over-summary', 'milestone', 'hockey/goal', 'hockey/card', 'hockey/penalty-corner'];
+const TRANSIENT = [
+  'four', 'six', 'wicket', 'new-batter', 'over-summary', 'milestone',
+  'hockey/goal', 'hockey/card', 'hockey/penalty-corner',
+  'hockey/starting11', 'hockey/substitutes', 'hockey/scoreboard-banner',
+];
 const LABELS: Record<string, string> = {
   // Cricket
   scorebug: 'Scorebug', batters: 'Batters', bowler: 'Bowler', partnership: 'Partnership', four: 'Four', six: 'Six', wicket: 'Wicket', 'new-batter': 'New batter',
@@ -11,14 +15,23 @@ const LABELS: Record<string, string> = {
   // Shared
   versus: 'Versus (pre-match)', result: 'Result', 'lower-third': 'Lower third',
   // Hockey
-  'hockey/scorebug': '🏑 Scorebug', 'hockey/goal': '🏑 Goal sting', 'hockey/card': '🏑 Card',
-  'hockey/penalty-corner': '🏑 Penalty corner', 'hockey/shootout': '🏑 Shootout tracker',
+  'hockey/scorebug': '🏑 Scorebug',
+  'hockey/goal': '🏑 Goal sting',
+  'hockey/card': '🏑 Card',
+  'hockey/penalty-corner': '🏑 Penalty corner',
+  'hockey/shootout': '🏑 Shootout tracker',
+  'hockey/starting11': '🏑 Starting 11 formation',
+  'hockey/substitutes': '🏑 Substitutes bench',
+  'hockey/scoreboard-banner': '🏑 Scoreboard banner (Full Name)',
 };
 
 /** Overlays that are always shown regardless of sport. */
 const SHARED_OVERLAYS = new Set(['versus', 'result', 'lower-third']);
 /** Overlays that belong to hockey only. */
-const HOCKEY_OVERLAYS = new Set(['hockey/scorebug', 'hockey/goal', 'hockey/card', 'hockey/penalty-corner', 'hockey/shootout']);
+const HOCKEY_OVERLAYS = new Set([
+  'hockey/scorebug', 'hockey/goal', 'hockey/card', 'hockey/penalty-corner', 'hockey/shootout',
+  'hockey/starting11', 'hockey/substitutes', 'hockey/scoreboard-banner',
+]);
 
 const fail = (e: unknown) => toast((e as ApiFail).message, 'error');
 
@@ -32,6 +45,10 @@ export function Broadcast() {
   const [lt, setLt] = useState({ headline: '', subhead: '' });
   const [note, setNote] = useState('');
   const [inn, setInn] = useState(1);
+  const [hockeySide, setHockeySide] = useState<Record<string, 'A' | 'B'>>({
+    'hockey/starting11': 'A',
+    'hockey/substitutes': 'A',
+  });
   const [sim, setSim] = useState({ balls: 60, speedMs: 600 });
   const [simStatus, setSimStatus] = useState<{ running: boolean; remaining: number }>({ running: false, remaining: 0 });
   const [vmix, setVmix] = useState<{ state: string; lastError: string | null; enabled: boolean } | null>(null);
@@ -69,9 +86,12 @@ export function Broadcast() {
     q.set('theme', theme);
     if (position !== 'bottom') q.set('position', position);
     if (scale !== '1') q.set('scale', scale);
+    if (n === 'hockey/starting11' || n === 'hockey/substitutes') {
+      q.set('side', hockeySide[n] ?? 'A');
+    }
     return `${base}/overlays/${n}.html?${q}`;
   };
-  const allUrls = useMemo(() => names.map((n) => `${LABELS[n] ?? n}\t${url(n)}`).join('\n'), [names, theme, position, scale, fixed, matchId, base]);
+  const allUrls = useMemo(() => names.map((n) => `${LABELS[n] ?? n}\t${url(n)}`).join('\n'), [names, theme, position, scale, fixed, matchId, base, hockeySide]);
 
   const act = async (path: string, body?: unknown) => { try { await post(path, body); } catch (e) { fail(e); } };
   const setSimulate = async (start: boolean) => {
@@ -106,15 +126,68 @@ export function Broadcast() {
             {names.map((n) => {
               const o = overlays[n];
               const transient = TRANSIENT.includes(n);
+              const isTeamSpecific = n === 'hockey/starting11' || n === 'hockey/substitutes';
+              const side = hockeySide[n] ?? 'A';
+              const teamPayload = isTeamSpecific ? { side } : {};
+
               return (
                 <tr key={n} className="border-t border-ink-700 align-middle">
-                  <td className="py-2 pr-3 font-semibold">{LABELS[n] ?? n}{clients.byOverlay[n] ? <span className="ml-2 text-xs font-normal text-emerald-400">● {clients.byOverlay[n]}</span> : null}</td>
+                  <td className="py-2 pr-3 font-semibold">
+                    {LABELS[n] ?? n}
+                    {clients.byOverlay[n] ? <span className="ml-2 text-xs font-normal text-emerald-400">● {clients.byOverlay[n]}</span> : null}
+                  </td>
                   <td className="max-w-[420px] truncate font-mono text-xs text-slate-300" title={url(n)}>{url(n)}</td>
                   <td className="no-print whitespace-nowrap py-1 text-right">
+                    {isTeamSpecific && (
+                      <span className="mr-2 inline-flex rounded-lg border border-ink-600 bg-ink-900 p-0.5 align-middle">
+                        {(['A', 'B'] as const).map((s) => (
+                          <button
+                            key={s}
+                            type="button"
+                            className={`px-2 py-0.5 text-xs font-bold rounded ${
+                              side === s ? 'bg-accent text-ink-950' : 'text-slate-400 hover:text-white'
+                            }`}
+                            onClick={() => setHockeySide((prev) => ({ ...prev, [n]: s }))}
+                          >
+                            Team {s}
+                          </button>
+                        ))}
+                      </span>
+                    )}
                     <button className="btn !min-h-[36px] !px-3" onClick={() => void copyText(url(n))}>Copy</button>{' '}
                     <a className="btn !min-h-[36px] !px-3" href={url(n) + '&debug=1&force=1'} target="_blank" rel="noreferrer">Open</a>{' '}
-                    {transient && <button className="btn !min-h-[36px] !px-3" onClick={() => void act(`/api/overlays/${n}/trigger`, n === 'new-batter' && note ? { data: { note } } : {})}>Fire</button>}{' '}
-                    <button className={`btn !min-h-[36px] w-24 ${o?.visible ? '!border-red-500 !bg-red-600' : ''}`} onClick={() => void act(`/api/overlays/${n}/${o?.visible ? 'hide' : 'show'}`, n === 'scorecard' ? { data: { innings: inn } } : {})}>{o?.visible ? '● ON AIR' : 'Show'}</button>
+                    {transient && (
+                      <button
+                        className="btn !min-h-[36px] !px-3"
+                        onClick={() =>
+                          void act(
+                            `/api/overlays/${n}/trigger`,
+                            n === 'new-batter' && note
+                              ? { data: { note } }
+                              : isTeamSpecific
+                              ? { data: teamPayload }
+                              : {}
+                          )
+                        }
+                      >
+                        Fire
+                      </button>
+                    )}{' '}
+                    <button
+                      className={`btn !min-h-[36px] w-24 ${o?.visible ? '!border-red-500 !bg-red-600' : ''}`}
+                      onClick={() =>
+                        void act(
+                          `/api/overlays/${n}/${o?.visible ? 'hide' : 'show'}`,
+                          n === 'scorecard'
+                            ? { data: { innings: inn } }
+                            : isTeamSpecific
+                            ? { data: teamPayload }
+                            : {}
+                        )
+                      }
+                    >
+                      {o?.visible ? '● ON AIR' : 'Show'}
+                    </button>
                   </td>
                 </tr>
               );

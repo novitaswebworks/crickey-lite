@@ -67,6 +67,56 @@ export function payloadFor(name: string, state: LiveState, data: Record<string, 
           ...data,
         };
       }
+      case 'hockey/starting11': {
+        const side = (data.side === 'B' ? 'B' : 'A') as 'A' | 'B';
+        const team = hState.teams?.[side];
+        return {
+          ...base,
+          side,
+          teamName: team?.name ?? (side === 'A' ? 'Team A' : 'Team B'),
+          teamShort: team?.shortName ?? side,
+          teamColor: team?.color ?? '#1d4ed8',
+          teamLogo: team?.logo ?? null,
+          coach: team?.coach ?? '',
+          tournament: hState.tournament ?? 'FIH PRO LEAGUE',
+          sponsor: hState.sponsor ?? 'polytan',
+          players: team?.starting11 ?? [],
+          ...data,
+        };
+      }
+      case 'hockey/substitutes': {
+        const side = (data.side === 'B' ? 'B' : 'A') as 'A' | 'B';
+        const team = hState.teams?.[side];
+        return {
+          ...base,
+          side,
+          teamName: team?.name ?? (side === 'A' ? 'Team A' : 'Team B'),
+          teamShort: team?.shortName ?? side,
+          teamColor: team?.color ?? '#1d4ed8',
+          teamLogo: team?.logo ?? null,
+          coach: team?.coach ?? '',
+          tournament: hState.tournament ?? 'FIH PRO LEAGUE',
+          sponsor: hState.sponsor ?? 'polytan',
+          substitutes: team?.substitutes ?? [],
+          ...data,
+        };
+      }
+      case 'hockey/scoreboard-banner': {
+        return {
+          ...base,
+          teamA: hState.teams?.A,
+          teamB: hState.teams?.B,
+          scoreA: hState.scoreA ?? 0,
+          scoreB: hState.scoreB ?? 0,
+          periodLabel: hState.periodLabel ?? 'Q1',
+          status: hState.status ?? 'live',
+          statusText: hState.statusText ?? '',
+          venue: hState.venue ?? '',
+          tournament: hState.tournament ?? 'FIH PRO LEAGUE',
+          sponsor: hState.sponsor ?? 'Dream11',
+          ...data,
+        };
+      }
       default:
         return { ...base, ...data };
     }

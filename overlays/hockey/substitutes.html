@@ -1,0 +1,291 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Hockey Substitutes Bench</title>
+<link rel="stylesheet" href="../base.css">
+<link rel="stylesheet" href="../components.css">
+<style>
+* { box-sizing: border-box; }
+body { margin: 0; padding: 0; overflow: hidden; background: transparent; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+#stage { width: 100vw; height: 100vh; position: relative; display: flex; flex-direction: column; align-items: center; justify-content: flex-end; padding-bottom: 2.5rem; }
+
+/* Horizontal Subs Row */
+.subs-container {
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  gap: 1.5rem;
+  margin-bottom: 2rem;
+  z-index: 10;
+  max-width: 95vw;
+  flex-wrap: nowrap;
+}
+
+/* Individual Player Card */
+.sub-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  position: relative;
+  transition: transform 0.3s ease;
+}
+
+.sub-img-wrap {
+  width: 92px;
+  height: 92px;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  margin-bottom: -10px;
+  z-index: 2;
+  filter: drop-shadow(0 6px 10px rgba(0, 0, 0, 0.7));
+}
+
+.sub-img {
+  max-width: 92px;
+  max-height: 92px;
+  object-fit: contain;
+}
+
+.sub-silhouette {
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #1e3a8a, #3b82f6);
+  border: 2px solid rgba(255, 255, 255, 0.8);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  font-weight: 800;
+  font-size: 1.4rem;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.4);
+}
+
+/* Slanted Tag */
+.sub-tag {
+  display: flex;
+  align-items: stretch;
+  height: 28px;
+  filter: drop-shadow(0 3px 6px rgba(0, 0, 0, 0.5));
+  transform: skewX(-14deg);
+}
+
+.sub-num {
+  background: #ffffff;
+  color: #d90429;
+  font-weight: 900;
+  font-size: 1rem;
+  padding: 0 0.55rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-top-left-radius: 4px;
+  border-bottom-left-radius: 4px;
+}
+
+.sub-name {
+  background: linear-gradient(90deg, #0284c7 0%, #0369a1 100%);
+  color: #ffffff;
+  font-weight: 800;
+  font-size: 0.9rem;
+  letter-spacing: 0.02em;
+  padding: 0 0.75rem;
+  display: flex;
+  align-items: center;
+  white-space: nowrap;
+  border-top-right-radius: 4px;
+  border-bottom-right-radius: 4px;
+}
+.sub-tag * { transform: skewX(14deg); }
+
+/* Bottom Bar */
+.bottom-bar {
+  display: flex;
+  align-items: center;
+  gap: 1.5rem;
+  z-index: 20;
+}
+
+.league-badge {
+  background: #0f172a;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 6px;
+  padding: 0.6rem 1.2rem;
+  color: #ffffff;
+  font-weight: 900;
+  font-size: 1.1rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.5);
+}
+
+.team-plate {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+  border-left: 6px solid var(--team-color, #2563eb);
+  border-right: 6px solid var(--team-color, #2563eb);
+  padding: 0.5rem 3rem;
+  border-radius: 8px;
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.6);
+  min-width: 440px;
+}
+
+.team-header {
+  display: flex;
+  align-items: center;
+  gap: 0.8rem;
+}
+
+.team-name {
+  font-size: 1.8rem;
+  font-weight: 900;
+  color: #ffffff;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.team-coach {
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: #94a3b8;
+  letter-spacing: 0.03em;
+  margin-top: 0.1rem;
+}
+
+.sponsor-badge {
+  background: #0f172a;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 6px;
+  padding: 0.6rem 1.2rem;
+  color: #38bdf8;
+  font-weight: 800;
+  font-size: 1.1rem;
+  letter-spacing: 0.05em;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.5);
+}
+</style>
+</head>
+<body>
+<div id="stage">
+  <div class="subs-container" id="subsList"></div>
+
+  <div class="bottom-bar">
+    <div class="league-badge" id="tournament">FIH PRO LEAGUE</div>
+    <div class="team-plate" id="teamPlate">
+      <div class="team-header">
+        <span id="teamBadge" class="badge"></span>
+        <span class="team-name" id="teamName">INDIA</span>
+      </div>
+      <div class="team-coach" id="teamCoach">Coach: Graham Reid</div>
+    </div>
+    <div class="sponsor-badge" id="sponsor">polytan</div>
+  </div>
+</div>
+
+<script src="../overlay-client.js"></script>
+<script>
+function buildSubCard(p, teamColor) {
+  var card = document.createElement('div');
+  card.className = 'sub-card';
+
+  var imgWrap = document.createElement('div');
+  imgWrap.className = 'sub-img-wrap';
+
+  if (p.photoPath) {
+    var img = document.createElement('img');
+    img.className = 'sub-img';
+    img.src = p.photoPath;
+    img.alt = p.name;
+    imgWrap.appendChild(img);
+  } else {
+    var sil = document.createElement('div');
+    sil.className = 'sub-silhouette';
+    if (teamColor) sil.style.background = 'linear-gradient(135deg, ' + teamColor + ', #0f172a)';
+    sil.textContent = p.shirtNo ? '#' + p.shirtNo : (p.shortName ? p.shortName.slice(0, 2) : p.name.slice(0, 2));
+    imgWrap.appendChild(sil);
+  }
+  card.appendChild(imgWrap);
+
+  var tag = document.createElement('div');
+  tag.className = 'sub-tag';
+
+  var num = document.createElement('div');
+  num.className = 'sub-num';
+  num.textContent = p.shirtNo || '-';
+  tag.appendChild(num);
+
+  var name = document.createElement('div');
+  name.className = 'sub-name';
+  if (teamColor) name.style.background = teamColor;
+  var display = p.shortName || p.name;
+  name.textContent = display + (p.isCaptain ? ' (C)' : '');
+  tag.appendChild(name);
+
+  card.appendChild(tag);
+  return card;
+}
+
+Overlay.init({
+  name: 'hockey/substitutes',
+  sample: function () {
+    return {
+      matchId: 'sample',
+      sport: 'hockey',
+      tournament: 'FIH PRO LEAGUE',
+      sponsor: 'polytan',
+      side: 'A',
+      teamName: 'India',
+      teamColor: '#0055d4',
+      coach: 'Graham Reid',
+      substitutes: [
+        { id: '21', name: 'R P. Singh', shirtNo: '3', role: 'DEF' },
+        { id: '22', name: 'J. Singh', shirtNo: '4', role: 'MID' },
+        { id: '23', name: 'H. Singh', shirtNo: '8', role: 'MID' },
+        { id: '24', name: 'K. Pathak', shirtNo: '12', role: 'GK' },
+        { id: '25', name: 'N. Sharma', shirtNo: '18', role: 'FWD' },
+        { id: '26', name: 'R. Singh', shirtNo: '31', role: 'DEF' },
+        { id: '27', name: 'G. Singh', shirtNo: '71', role: 'FWD' }
+      ]
+    };
+  },
+  render: function (s, p, U) {
+    if (!s) return;
+    U.empty(false);
+
+    var urlParams = new URLSearchParams(window.location.search);
+    var side = (p && p.side) || urlParams.get('side') || (s && s.side) || 'A';
+    var team = s.teams ? s.teams[side] : null;
+
+    var teamName = (p && p.teamName) || (team ? team.name : 'Team ' + side);
+    var teamColor = (p && p.teamColor) || (team ? team.color : '#0055d4');
+    var coach = (p && p.coach) || (team ? team.coach : '') || '';
+    var tournament = (p && p.tournament) || s.tournament || 'FIH PRO LEAGUE';
+    var sponsor = (p && p.sponsor) || s.sponsor || 'polytan';
+
+    document.documentElement.style.setProperty('--team-color', teamColor);
+
+    U.setText(U.el('tournament'), tournament);
+    U.setText(U.el('teamName'), teamName);
+    U.setText(U.el('teamCoach'), coach ? 'Coach: ' + coach : '');
+    U.el('teamCoach').style.display = coach ? 'block' : 'none';
+    U.setText(U.el('sponsor'), sponsor);
+    if (team) U.teamBadge(U.el('teamBadge'), team);
+
+    var subs = (p && p.substitutes && p.substitutes.length) ? p.substitutes : (team && team.substitutes ? team.substitutes : []);
+    var container = U.el('subsList');
+    container.innerHTML = '';
+
+    for (var i = 0; i < subs.length; i++) {
+      container.appendChild(buildSubCard(subs[i], teamColor));
+    }
+  }
+});
+</script>
+</body>
+</html>
