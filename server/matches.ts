@@ -1,26 +1,9 @@
 import { EventEmitter } from 'node:events';
 import { computeState, EngineError, EngineEvent, EventPayload, LiveState, MatchConfig, PlayerRef, Side } from './engine';
+import { computeHockeyState, HockeyEngineEvent, HockeyMatchConfig, HockeyState } from './engine/hockey';
 import { SettingsService } from './settings';
 import { Doc, Store } from './store';
 import { MatchPlayerRow, MatchRow, PlayerRow, TeamRow } from './types';
-
-/** Minimal stub state for a hockey match (Phase 1 placeholder, Phase 2 replaces with real engine). */
-function hockeyStubState(m: Doc<MatchRow>, teamA: Doc<TeamRow>, teamB: Doc<TeamRow>, eventCount: number): LiveState {
-  return {
-    matchId: String(m.id), title: m.title, venue: m.venue, overs: 0,
-    status: eventCount === 0 ? 'setup' : 'live',
-    statusText: 'Hockey match',
-    sport: 'hockey',
-    teams: {
-      A: { name: teamA.name, shortName: teamA.shortName, color: teamA.color, logo: teamA.logoPath ?? null },
-      B: { name: teamB.name, shortName: teamB.shortName, color: teamB.color, logo: teamB.logoPath ?? null },
-    },
-    innings: [], current: null,
-    toss: m.tossWinner && m.tossDecision ? { winner: m.tossWinner, decision: m.tossDecision, text: '' } : null,
-    result: null, canSuperOver: false, eventCount,
-    invariantErrors: [], effects: null,
-  } as unknown as LiveState;
-}
 
 export class ApiError extends Error {
   constructor(public status: number, public code: string, message: string) {
@@ -99,6 +82,26 @@ export class MatchService extends EventEmitter {
     return t;
   }
 
+  buildHockeyConfig(id: number): HockeyMatchConfig {
+    const m = this.row(id);
+    const side = (s: Side): HockeyMatchConfig['teams'][Side] => {
+      const t = this.team(s === 'A' ? m.teamAId : m.teamBId);
+      const squad = this.store.list<PlayerRow>('players', t.id).sort((a, b) => a.orderIdx - b.orderIdx || a.id - b.id);
+      const rows = this.store.list<MatchPlayerRow>('matchPlayers', id).filter((r) => r.side === s && r.inXi).sort((a, b) => a.battingOrder - b.battingOrder);
+      const chosen = rows.length ? rows.map((r) => squad.find((p) => p.id === r.playerId)).filter((p): p is Doc<PlayerRow> => !!p) : squad;
+      const players: PlayerRef[] = chosen.map((p) => ({ id: String(p.id), name: p.name, shortName: p.shortName || undefined }));
+      return { id: String(t.id), name: t.name, shortName: t.shortName, color: t.color, logo: t.logoPath, players };
+    };
+    return {
+      id: String(id), title: m.title, venue: m.venue, playersPerSide: m.playersPerSide,
+      teams: { A: side('A'), B: side('B') },
+      settings: {
+        periods: m.hockeySettings?.periods ?? 4,
+        periodDurationMins: m.hockeySettings?.periodDurationMins ?? 15,
+      },
+    };
+  }
+
   buildConfig(id: number): MatchConfig {
     const m = this.row(id);
     const side = (s: Side): MatchConfig['teams'][Side] => {
@@ -117,24 +120,21 @@ export class MatchService extends EventEmitter {
     };
   }
 
+  private computeForMatch(id: number, config: MatchConfig, events: EngineEvent[]): LiveState {
+    const m = this.row(id);
+    if ((m.sport ?? 'cricket') === 'hockey') {
+      const hConfig = this.buildHockeyConfig(id);
+      return computeHockeyState(hConfig, events as unknown as HockeyEngineEvent[]) as unknown as LiveState;
+    }
+    return this.compute(config, events);
+  }
+
   private load(id: number): Entry {
     let e = this.cache.get(id);
     if (!e) {
-      const m = this.row(id);
-      const events = this.store.events.list(id);
-      // Hockey matches use their own engine (Phase 2+). For now return a stub so the
-      // cricket engine is never called with hockey event payloads.
-      if ((m.sport ?? 'cricket') === 'hockey') {
-        const teamA = this.team(m.teamAId);
-        const teamB = this.team(m.teamBId);
-        const stubState = hockeyStubState(m, teamA, teamB, events.length);
-        const config = this.buildConfig(id);
-        e = { config, events, state: stubState };
-        this.cache.set(id, e);
-        return e;
-      }
       const config = this.buildConfig(id);
-      e = { config, events, state: this.compute(config, events) };
+      const events = this.store.events.list(id);
+      e = { config, events, state: this.computeForMatch(id, config, events) };
       this.cache.set(id, e);
     }
     return e;
@@ -165,7 +165,7 @@ export class MatchService extends EventEmitter {
   append(id: number, payload: EventPayload): LiveState {
     const entry = this.load(id);
     const next: EngineEvent = { ...payload, id: (entry.events[entry.events.length - 1]?.id ?? 0) + 1 } as EngineEvent;
-    const state = this.compute(entry.config, [...entry.events, next]);
+    const state = this.computeForMatch(id, entry.config, [...entry.events, next]);
     const saved = this.store.events.append(id, payload);
     entry.events = [...entry.events, saved];
     entry.state = state;
@@ -178,7 +178,7 @@ export class MatchService extends EventEmitter {
     const entry = this.load(id);
     if (!entry.events.length) throw new ApiError(409, 'NOTHING_TO_UNDO', 'There is nothing to undo.');
     const events = entry.events.slice(0, -1);
-    const state = { ...this.compute(entry.config, events), effects: null };
+    const state = { ...this.computeForMatch(id, entry.config, events), effects: null };
     this.store.events.removeLast(id);
     entry.events = events;
     entry.state = state;
@@ -194,13 +194,13 @@ export class MatchService extends EventEmitter {
   /** The state an edit would produce, without saving it; throws exactly what `edit` would. */
   previewEdit(id: number, eventId: number, payload: EventPayload): LiveState {
     const entry = this.load(id);
-    return this.compute(entry.config, this.withEdit(entry, eventId, payload));
+    return this.computeForMatch(id, entry.config, this.withEdit(entry, eventId, payload));
   }
 
   edit(id: number, eventId: number, payload: EventPayload): LiveState {
     const entry = this.load(id);
     const events = this.withEdit(entry, eventId, payload);
-    const state = { ...this.compute(entry.config, events), effects: null };
+    const state = { ...this.computeForMatch(id, entry.config, events), effects: null };
     this.store.events.replacePayload(id, eventId, payload);
     entry.events = events;
     entry.state = state;
@@ -230,7 +230,13 @@ export class MatchService extends EventEmitter {
       } catch {
         state = null;
       }
-      const score = (state?.innings ?? []).map((i) => `${state!.teams[i.battingSide].shortName} ${i.runs}/${i.wickets} (${i.overs})`).join(' · ');
+      let score = '';
+      if ((m.sport ?? 'cricket') === 'hockey') {
+        const h = state as unknown as HockeyState;
+        score = h ? `${h.teams.A.shortName} ${h.scoreA} - ${h.scoreB} ${h.teams.B.shortName}` : '0 - 0';
+      } else {
+        score = (state?.innings ?? []).map((i) => `${state!.teams[i.battingSide].shortName} ${i.runs}/${i.wickets} (${i.overs})`).join(' · ');
+      }
       return {
         id: m.id, title: m.title, venue: m.venue, sport: m.sport ?? 'cricket', overs: m.overs,
         teamA: { name: teamA.name, shortName: teamA.shortName, color: teamA.color },
