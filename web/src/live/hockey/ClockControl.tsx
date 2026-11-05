@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react';
 import type { HockeyState } from '@engine/hockey';
 import { formatClock } from '@engine/hockey';
 
@@ -10,8 +11,23 @@ interface Props {
 
 export function ClockControl({ state, onClockAction, onSetPeriod, onEndPeriod }: Props) {
   const isRunning = state.clock.running;
-  const displayMs = state.clock.displayMs;
-  const timeStr = formatClock(displayMs);
+  const [localMs, setLocalMs] = useState(state.clock.displayMs);
+
+  // Sync immediately when incoming state updates from the server
+  useEffect(() => {
+    setLocalMs(state.clock.displayMs);
+  }, [state.clock.displayMs, state.clock.running]);
+
+  // Smooth local ticker between 500ms server broadcasts
+  useEffect(() => {
+    if (!isRunning) return;
+    const interval = setInterval(() => {
+      setLocalMs((prev) => Math.max(0, prev - 250));
+    }, 250);
+    return () => clearInterval(interval);
+  }, [isRunning]);
+
+  const timeStr = formatClock(localMs);
 
   return (
     <div className="card flex flex-col gap-4 border border-ink-600 bg-ink-800/80 p-5 shadow-lg">

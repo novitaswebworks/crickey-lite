@@ -54,8 +54,9 @@ export function Broadcast() {
   const base = info?.publicBaseUrl || location.origin;
   const allNames = info?.overlays ?? [];
   // Determine sport of the active match — fall back to cricket
+  const activeMatch = matches.find((m) => m.id === matchId);
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const activeSport: 'cricket' | 'hockey' = (state as any)?.sport ?? 'cricket';
+  const activeSport: 'cricket' | 'hockey' = (state as any)?.sport ?? activeMatch?.sport ?? 'cricket';
   // Filter overlay list: show sport-specific + shared overlays
   const names = allNames.filter((n) => {
     if (SHARED_OVERLAYS.has(n)) return true;
@@ -130,26 +131,34 @@ export function Broadcast() {
           <input className="input" placeholder="Sub-headline" value={lt.subhead} onChange={(e) => setLt({ ...lt, subhead: e.target.value })} />
           <div className="flex gap-2"><button className="btn btn-primary flex-1" onClick={() => void act('/api/overlays/lower-third/show', { data: lt })}>Push on air</button><button className="btn" onClick={() => void act('/api/overlays/lower-third/hide')}>Hide</button></div>
         </div>
-        <div className="card flex flex-col gap-2">
-          <div className="label !mb-0">Other inputs</div>
-          <input className="input" placeholder="New-batter career line, e.g. 4,210 ODI runs · Avg 38.2" value={note} onChange={(e) => setNote(e.target.value)} />
-          <Field label="Scorecard shows innings">
-            <select className="input" value={inn} onChange={(e) => setInn(Number(e.target.value))}>{(state?.innings.length ? state.innings.map((i) => i.number) : [1]).map((n) => <option key={n} value={n}>Innings {n}</option>)}</select>
-          </Field>
-          <button className="btn" onClick={() => void act('/api/overlays/scorecard/show', { data: { innings: inn } })}>Refresh scorecard on air</button>
-        </div>
+        {activeSport === 'cricket' && (
+          <div className="card flex flex-col gap-2">
+            <div className="label !mb-0">Other inputs (Cricket)</div>
+            <input className="input" placeholder="New-batter career line, e.g. 4,210 ODI runs · Avg 38.2" value={note} onChange={(e) => setNote(e.target.value)} />
+            <Field label="Scorecard shows innings">
+              <select className="input" value={inn} onChange={(e) => setInn(Number(e.target.value))}>
+                {((state as any)?.innings?.length ? (state as any).innings.map((i: any) => i.number) : [1]).map((n: number) => (
+                  <option key={n} value={n}>Innings {n}</option>
+                ))}
+              </select>
+            </Field>
+            <button className="btn" onClick={() => void act('/api/overlays/scorecard/show', { data: { innings: inn } })}>Refresh scorecard on air</button>
+          </div>
+        )}
       </section>
 
-      <section className="card no-print">
-        <div className="label">Simulate (plays random balls through the real engine on the active match)</div>
-        <div className="flex flex-wrap items-end gap-3">
-          <Field label="Balls"><input className="input !w-28" type="number" min={1} value={sim.balls} onChange={(e) => setSim({ ...sim, balls: Number(e.target.value) })} /></Field>
-          <Field label="Speed (ms per ball)"><input className="input !w-36" type="number" min={50} value={sim.speedMs} onChange={(e) => setSim({ ...sim, speedMs: Number(e.target.value) })} /></Field>
-          {simStatus.running ? <button className="btn btn-danger" onClick={() => void setSimulate(false)}>Stop ({simStatus.remaining} left)</button> : <button className="btn btn-primary" onClick={() => void setSimulate(true)}>Start simulation</button>}
-          <span className="text-xs text-slate-400">Tip: use a demo match from <code>npm run seed</code>, or any test match — simulating changes that match's scoring.</span>
-        </div>
-        {matches.length > 0 && <p className="mt-2 text-xs text-slate-500">Active match: {matches.find((m) => m.id === matchId)?.title || `#${matchId}`}</p>}
-      </section>
+      {activeSport === 'cricket' && (
+        <section className="card no-print">
+          <div className="label">Simulate (plays random balls through the real engine on the active match)</div>
+          <div className="flex flex-wrap items-end gap-3">
+            <Field label="Balls"><input className="input !w-28" type="number" min={1} value={sim.balls} onChange={(e) => setSim({ ...sim, balls: Number(e.target.value) })} /></Field>
+            <Field label="Speed (ms per ball)"><input className="input !w-36" type="number" min={50} value={sim.speedMs} onChange={(e) => setSim({ ...sim, speedMs: Number(e.target.value) })} /></Field>
+            {simStatus.running ? <button className="btn btn-danger" onClick={() => void setSimulate(false)}>Stop ({simStatus.remaining} left)</button> : <button className="btn btn-primary" onClick={() => void setSimulate(true)}>Start simulation</button>}
+            <span className="text-xs text-slate-400">Tip: use a demo match from <code>npm run seed</code>, or any test match — simulating changes that match's scoring.</span>
+          </div>
+          {matches.length > 0 && <p className="mt-2 text-xs text-slate-500">Active match: {matches.find((m) => m.id === matchId)?.title || `#${matchId}`}</p>}
+        </section>
+      )}
 
       <section className="grid gap-4 md:grid-cols-2">
         <div className="card no-print">

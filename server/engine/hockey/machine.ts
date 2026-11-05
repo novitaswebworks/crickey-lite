@@ -114,7 +114,14 @@ export class HockeyMachine {
       case 'ADJUST_CLOCK': {
         const at = event.at ?? this.lastEventAt;
         this.lastEventAt = at;
-        this.displayMs = Math.max(0, Math.min(this.periodDurationMs, this.displayMs + event.deltaMs));
+        if (this.clockRunning && this.clockStartedAt !== null) {
+          const elapsed = Math.max(0, at - this.clockStartedAt);
+          const curLive = Math.max(0, this.displayMs - elapsed);
+          this.displayMs = Math.max(0, Math.min(this.periodDurationMs, curLive + event.deltaMs));
+          this.clockStartedAt = at;
+        } else {
+          this.displayMs = Math.max(0, Math.min(this.periodDurationMs, this.displayMs + event.deltaMs));
+        }
         this.clockAdjustmentMs += event.deltaMs;
         break;
       }

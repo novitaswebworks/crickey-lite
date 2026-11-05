@@ -148,4 +148,61 @@ describe('Hockey Integration & Coexistence with Cricket', () => {
       fs.rmSync(dir, { recursive: true, force: true });
     }
   });
+
+  it('dynamically ticks down clock while running via matches.state()', async () => {
+    const { store, dir } = await tempStore();
+    try {
+      const settings = new SettingsService(store);
+      const matches = new MatchService(store, settings);
+
+      const teamA = store.insert('teams', { name: 'India', shortName: 'IND', color: '#0000FF', logoPath: null });
+      const teamB = store.insert('teams', { name: 'Germany', shortName: 'GER', color: '#000000', logoPath: null });
+
+      store.insert('players', { teamId: teamA.id, name: 'Harmanpreet Singh', shortName: 'Harman', shirtNo: '13', role: 'Defender', orderIdx: 1 }, teamA.id);
+      store.insert('players', { teamId: teamA.id, name: 'PR Sreejesh', shortName: 'Sreejesh', shirtNo: '16', role: 'Goalkeeper', orderIdx: 2 }, teamA.id);
+      store.insert('players', { teamId: teamB.id, name: 'Mats Grambusch', shortName: 'Mats', shirtNo: '10', role: 'Midfielder', orderIdx: 1 }, teamB.id);
+      store.insert('players', { teamId: teamB.id, name: 'Christopher Ruhr', shortName: 'Ruhr', shirtNo: '11', role: 'Forward', orderIdx: 2 }, teamB.id);
+
+      const hockeyMatch = matches.create({
+        sport: 'hockey',
+        title: 'Olympic Hockey Final',
+        venue: 'Paris',
+        teamAId: teamA.id,
+        teamBId: teamB.id,
+        overs: 0,
+        playersPerSide: 2,
+        tossWinner: null,
+        tossDecision: null,
+        xiA: [],
+        xiB: [],
+        periods: 4,
+        periodDurationMins: 15,
+      });
+
+      // Start clock with wall-clock timestamp ~10 seconds ago
+      const tenSecsAgo = Date.now() - 10_000;
+      matches.append(hockeyMatch.id, { type: 'START_CLOCK', at: tenSecsAgo } as any);
+
+      // Verify that calling matches.state() computes the current remaining time
+      const liveState = matches.state(hockeyMatch.id) as unknown as HockeyState;
+      expect(liveState.clock.running).toBe(true);
+      // Remaining should be less than or equal to 15m - 9.5s
+      expect(liveState.clock.displayMs).toBeLessThanOrEqual(900_000 - 9_000);
+      expect(liveState.clock.displayMs).toBeGreaterThan(0);
+
+      // Stop clock
+      const stopNow = Date.now();
+      matches.append(hockeyMatch.id, { type: 'STOP_CLOCK', at: stopNow } as any);
+      const stoppedState = matches.state(hockeyMatch.id) as unknown as HockeyState;
+      expect(stoppedState.clock.running).toBe(false);
+      const stoppedMs = stoppedState.clock.displayMs;
+
+      // Ensure that stopped clock remains fixed and does not change with further time passage
+      const laterState = matches.state(hockeyMatch.id) as unknown as HockeyState;
+      expect(laterState.clock.displayMs).toBe(stoppedMs);
+    } finally {
+      store.close();
+      fs.rmSync(dir, { recursive: true, force: true });
+    }
+  });
 });

@@ -85,6 +85,7 @@ export function registerLiveRoutes(app: Express, ctx: Context): void {
   });
 
   // Clock tick broadcast: every 500ms, if any hockey match is live and clock is running, broadcast updated state via hub
+  let wasHockeyClockRunning = false;
   setInterval(() => {
     const active = matches.activeId();
     if (active === null) return;
@@ -92,9 +93,11 @@ export function registerLiveRoutes(app: Express, ctx: Context): void {
       const m = store.get<MatchRow>('matches', active);
       if (m && (m.sport ?? 'cricket') === 'hockey') {
         const state = matches.state(active) as unknown as HockeyState;
-        if (state?.clock?.running) {
+        const isRunning = !!state?.clock?.running;
+        if (isRunning || wasHockeyClockRunning) {
           ctx.hub.broadcastState(active, state);
         }
+        wasHockeyClockRunning = isRunning;
       }
     } catch {
       // ignore

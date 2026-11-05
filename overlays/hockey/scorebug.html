@@ -91,12 +91,26 @@ Overlay.init({
     // Clock display
     var clk = s.clock || {};
     var ms = clk.displayMs !== undefined ? clk.displayMs : 900000;
-    var totalSec = Math.max(0, Math.floor(ms / 1000));
-    var m = Math.floor(totalSec / 60);
-    var sec = totalSec % 60;
-    var timeStr = (m < 10 ? '0' : '') + m + ':' + (sec < 10 ? '0' : '') + sec;
-    U.setText(U.el('clock'), timeStr);
-    U.el('clock').classList.toggle('running', !!clk.running);
+    window._clockMs = ms;
+    var renderClock = function (valMs) {
+      var totalSec = Math.max(0, Math.floor(valMs / 1000));
+      var m = Math.floor(totalSec / 60);
+      var sec = totalSec % 60;
+      var timeStr = (m < 10 ? '0' : '') + m + ':' + (sec < 10 ? '0' : '') + sec;
+      U.setText(U.el('clock'), timeStr);
+      U.el('clock').classList.toggle('running', !!clk.running);
+    };
+    renderClock(ms);
+
+    if (window._clockTimer) clearInterval(window._clockTimer);
+    if (clk.running) {
+      window._clockTimer = setInterval(function () {
+        if (window._clockMs > 0) {
+          window._clockMs = Math.max(0, window._clockMs - 500);
+          renderClock(window._clockMs);
+        }
+      }, 500);
+    }
 
     U.setText(U.el('period'), s.periodLabel || 'Q1');
 

@@ -2,7 +2,7 @@ import { HockeyMachine } from './machine';
 import { HockeyShootoutState, HockeyState, ShootoutRound } from './types';
 
 export function snapshotHockey(machine: HockeyMachine, currentClockAt?: number): HockeyState {
-  const now = currentClockAt ?? (machine.clockRunning ? Date.now() : (machine.lastEventAt || Date.now()));
+  const now = currentClockAt ?? (machine.lastEventAt || Date.now());
 
   let liveDisplayMs = machine.displayMs;
   if (machine.clockRunning && machine.clockStartedAt !== null) {
@@ -28,12 +28,13 @@ export function snapshotHockey(machine: HockeyMachine, currentClockAt?: number):
   } else if (machine.eventCount === 0) {
     status = 'prematch';
     statusText = 'Prematch';
-  } else if (machine.displayMs === 0 && !machine.clockRunning) {
+  } else if (liveDisplayMs === 0 && machine.eventCount > 0) {
     status = 'break';
     statusText = machine.period === machine.totalPeriods ? 'Full Time' : `End of ${machine.periodLabel}`;
   } else {
     status = 'live';
-    statusText = `${machine.periodLabel} · ${machine.clockRunning ? 'Live' : 'Paused'}`;
+    const isRunning = machine.clockRunning && liveDisplayMs > 0;
+    statusText = `${machine.periodLabel} · ${isRunning ? 'Live' : 'Paused'}`;
   }
 
   // Shootout details
@@ -87,7 +88,7 @@ export function snapshotHockey(machine: HockeyMachine, currentClockAt?: number):
     scoreA,
     scoreB,
     clock: {
-      running: machine.clockRunning,
+      running: machine.clockRunning && liveDisplayMs > 0,
       displayMs: liveDisplayMs,
       startedAt: machine.clockStartedAt,
       adjustmentMs: machine.clockAdjustmentMs,

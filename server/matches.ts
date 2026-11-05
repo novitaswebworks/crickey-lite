@@ -124,7 +124,7 @@ export class MatchService extends EventEmitter {
     const m = this.row(id);
     if ((m.sport ?? 'cricket') === 'hockey') {
       const hConfig = this.buildHockeyConfig(id);
-      return computeHockeyState(hConfig, events as unknown as HockeyEngineEvent[]) as unknown as LiveState;
+      return computeHockeyState(hConfig, events as unknown as HockeyEngineEvent[], Date.now()) as unknown as LiveState;
     }
     return this.compute(config, events);
   }
@@ -150,7 +150,17 @@ export class MatchService extends EventEmitter {
   }
 
   state(id: number): LiveState {
-    return this.load(id).state;
+    const e = this.load(id);
+    const m = this.row(id);
+    if ((m.sport ?? 'cricket') === 'hockey') {
+      const curState = e.state as unknown as HockeyState;
+      if (curState?.clock?.running) {
+        const hConfig = this.buildHockeyConfig(id);
+        const nextState = computeHockeyState(hConfig, e.events as unknown as HockeyEngineEvent[], Date.now());
+        e.state = { ...nextState, effects: null } as unknown as LiveState;
+      }
+    }
+    return e.state;
   }
 
   events(id: number): EngineEvent[] {
