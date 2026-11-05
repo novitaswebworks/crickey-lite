@@ -37,6 +37,54 @@ export const eventSchema = z.discriminatedUnion('type', [
   z.object({ type: z.literal('MATCH_RESULT'), kind: z.enum(['tie', 'noresult', 'won']), winner: z.enum(['A', 'B']).optional(), text: z.string().max(160).optional() }),
 ]);
 
+export const hockeyEventSchema = z.discriminatedUnion('type', [
+  z.object({ type: z.literal('SET_PERIOD'), period: z.number().int().min(1).max(4), at: z.number().optional() }),
+  z.object({ type: z.literal('START_CLOCK'), at: z.number().default(() => Date.now()) }),
+  z.object({ type: z.literal('STOP_CLOCK'), at: z.number().default(() => Date.now()) }),
+  z.object({ type: z.literal('ADJUST_CLOCK'), deltaMs: z.number().int(), at: z.number().optional() }),
+  z.object({
+    type: z.literal('GOAL'),
+    teamSide: z.enum(['A', 'B']),
+    scorerId: id,
+    assistId: id.optional(),
+    kind: z.enum(['FG', 'PC', 'PS', 'OG']).default('FG'),
+    at: z.number().default(() => Date.now()),
+  }),
+  z.object({
+    type: z.literal('PENALTY_CORNER'),
+    teamSide: z.enum(['A', 'B']),
+    at: z.number().default(() => Date.now()),
+  }),
+  z.object({
+    type: z.literal('CARD'),
+    teamSide: z.enum(['A', 'B']),
+    playerId: id,
+    kind: z.enum(['green', 'yellow', 'red']),
+    durationMs: z.number().int(),
+    at: z.number().default(() => Date.now()),
+  }),
+  z.object({
+    type: z.literal('SHOOTOUT_ATTEMPT'),
+    teamSide: z.enum(['A', 'B']),
+    round: z.number().int().min(1).max(20),
+    scored: z.boolean(),
+    takerId: id.optional(),
+  }),
+  z.object({ type: z.literal('START_SHOOTOUT') }),
+  z.object({ type: z.literal('END_PERIOD'), at: z.number().optional() }),
+  z.object({
+    type: z.literal('MATCH_RESULT'),
+    kind: z.enum(['won', 'draw', 'noresult']),
+    winner: z.enum(['A', 'B']).optional(),
+    text: z.string().max(160).optional(),
+  }),
+  z.object({
+    type: z.literal('ADD_PLAYER'),
+    side: z.enum(['A', 'B']),
+    player: z.object({ id, name: z.string().min(1).max(60), shortName: z.string().max(12).optional() }),
+  }),
+]);
+
 export const teamSchema = z.object({
   name: z.string().trim().min(1).max(60),
   shortName: z.string().trim().min(2).max(5).transform((s) => s.toUpperCase()),

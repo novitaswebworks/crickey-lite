@@ -2,12 +2,13 @@ import { Express } from 'express';
 import { z } from 'zod';
 import { Context } from './context';
 import { EventPayload, LiveState } from './engine';
+import { HockeyEventPayload, HockeyState } from './engine/hockey';
 import { ApiError } from './matches';
-import { eventSchema } from './schemas';
+import { eventSchema, hockeyEventSchema } from './schemas';
 import { isOverlayName } from './overlays';
 import { DEFAULT_AUTO_HIDE, TRANSIENT } from './settings';
 import { exportCsv } from './export';
-import { PlayerRow } from './types';
+import { MatchRow, PlayerRow } from './types';
 import { payloadFor } from './triggers';
 import { flatState, toCsv, toXml } from './vmix/feed';
 
@@ -29,20 +30,76 @@ export function registerLiveRoutes(app: Express, ctx: Context): void {
   app.get('/api/state', (req, res) => res.json(stateFor(req.query.match)));
 
   // ---- scoring -----------------------------------------------------------------------------
+  const parseEvent = (matchId: number, body: unknown): EventPayload => {
+    const m = store.get<MatchRow>('matches', matchId);
+    if (!m) throw new ApiError(404, 'NOT_FOUND', 'Match not found.');
+    if ((m.sport ?? 'cricket') === 'hockey') {
+      return hockeyEventSchema.parse(body) as unknown as EventPayload;
+    }
+    return eventSchema.parse(body) as EventPayload;
+  };
+
   app.get('/api/matches/:id/events', (req, res) => res.json(matches.events(num(req.params.id))));
   app.post('/api/matches/:id/events', (req, res) => {
-    const payload = eventSchema.parse(req.body) as EventPayload;
-    res.json({ state: matches.append(num(req.params.id), payload) });
+    const id = num(req.params.id);
+    const payload = parseEvent(id, req.body);
+    res.json({ state: matches.append(id, payload) });
   });
   app.post('/api/matches/:id/undo', (req, res) => res.json({ state: matches.undo(num(req.params.id)) }));
   app.post('/api/matches/:id/events/:eventId/preview', (req, res) => {
-    const payload = eventSchema.parse(req.body) as EventPayload;
-    res.json({ state: matches.previewEdit(num(req.params.id), num(req.params.eventId), payload) });
+    const id = num(req.params.id);
+    const payload = parseEvent(id, req.body);
+    res.json({ state: matches.previewEdit(id, num(req.params.eventId), payload) });
   });
   app.patch('/api/matches/:id/events/:eventId', (req, res) => {
-    const payload = eventSchema.parse(req.body) as EventPayload;
-    res.json({ state: matches.edit(num(req.params.id), num(req.params.eventId), payload) });
+    const id = num(req.params.id);
+    const payload = parseEvent(id, req.body);
+    res.json({ state: matches.edit(id, num(req.params.eventId), payload) });
   });
+
+  // Clock control endpoint for hockey
+  app.post('/api/matches/:id/hockey/clock', (req, res) => {
+    const id = num(req.params.id);
+    const m = store.get<MatchRow>('matches', id);
+    if (!m) throw new ApiError(404, 'NOT_FOUND', 'Match not found.');
+    if ((m.sport ?? 'cricket') !== 'hockey') {
+      throw new ApiError(400, 'NOT_HOCKEY', 'Match is not a hockey match.');
+    }
+    const body = z.object({
+      action: z.enum(['start', 'stop', 'adjust']),
+      deltaMs: z.number().int().optional(),
+    }).parse(req.body);
+
+    const now = Date.now();
+    let payload: HockeyEventPayload;
+    if (body.action === 'start') {
+      payload = { type: 'START_CLOCK', at: now };
+    } else if (body.action === 'stop') {
+      payload = { type: 'STOP_CLOCK', at: now };
+    } else {
+      payload = { type: 'ADJUST_CLOCK', deltaMs: body.deltaMs ?? 0, at: now };
+    }
+
+    const state = matches.append(id, payload as unknown as EventPayload);
+    res.json({ state });
+  });
+
+  // Clock tick broadcast: every 500ms, if any hockey match is live and clock is running, broadcast updated state via hub
+  setInterval(() => {
+    const active = matches.activeId();
+    if (active === null) return;
+    try {
+      const m = store.get<MatchRow>('matches', active);
+      if (m && (m.sport ?? 'cricket') === 'hockey') {
+        const state = matches.state(active) as unknown as HockeyState;
+        if (state?.clock?.running) {
+          ctx.hub.broadcastState(active, state);
+        }
+      }
+    } catch {
+      // ignore
+    }
+  }, 500);
 
   app.post('/api/matches/:id/guest-player', (req, res) => {
     const id = num(req.params.id);

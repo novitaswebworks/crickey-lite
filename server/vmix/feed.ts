@@ -1,4 +1,5 @@
 import { InningsState, LiveState, Side } from '../engine';
+import { formatClock, HockeyState } from '../engine/hockey';
 
 export type FlatValue = string | number;
 
@@ -11,6 +12,49 @@ function sideInnings(state: LiveState, side: Side): InningsState | undefined {
 /** Flat, stable key/value view of the match for vMix data sources and title templates. */
 export function flatState(state: LiveState | null): Record<string, FlatValue> {
   if (!state) return { status_text: 'No active match' };
+
+  // Hockey state export for vMix
+  if ((state as unknown as { sport?: string }).sport === 'hockey') {
+    const h = state as unknown as HockeyState;
+    const teamA = h.teams.A;
+    const teamB = h.teams.B;
+    const activePenaltiesA = h.suspensions
+      .filter((s) => s.teamSide === 'A' && s.active)
+      .map((s) => `${s.playerName} (${s.kind.toUpperCase()} ${formatClock(s.remainingMs)})`)
+      .join(', ') || 'None';
+    const activePenaltiesB = h.suspensions
+      .filter((s) => s.teamSide === 'B' && s.active)
+      .map((s) => `${s.playerName} (${s.kind.toUpperCase()} ${formatClock(s.remainingMs)})`)
+      .join(', ') || 'None';
+    const latestGoal = [...(teamA.goals ?? []), ...(teamB.goals ?? [])].sort((a, b) => b.at - a.at)[0];
+
+    return {
+      match_title: h.title,
+      venue: h.venue,
+      status: h.status,
+      status_text: h.statusText,
+      period: h.periodLabel,
+      clock_text: formatClock(h.clock?.displayMs ?? 0),
+      clock_running: h.clock?.running ? '1' : '0',
+      team_a_name: teamA.name,
+      team_a_short: teamA.shortName,
+      team_a_color: teamA.color,
+      team_a_score: h.scoreA,
+      team_b_name: teamB.name,
+      team_b_short: teamB.shortName,
+      team_b_color: teamB.color,
+      team_b_score: h.scoreB,
+      score: `${h.scoreA} - ${h.scoreB}`,
+      score_text: `${teamA.shortName} ${h.scoreA} - ${h.scoreB} ${teamB.shortName}`,
+      penalty_corners_a: h.penaltyCorners?.A ?? 0,
+      penalty_corners_b: h.penaltyCorners?.B ?? 0,
+      active_penalties_a: activePenaltiesA,
+      active_penalties_b: activePenaltiesB,
+      latest_goal_scorer: latestGoal ? `${latestGoal.scorerName} (${latestGoal.clockDisplay})` : '',
+      result_text: h.result?.text ?? '',
+    };
+  }
+
   const out: Record<string, FlatValue> = {
     match_title: state.title, venue: state.venue, status: state.status, status_text: state.statusText,
     toss_text: state.toss?.text ?? '', result_text: state.result?.text ?? '',

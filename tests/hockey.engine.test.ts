@@ -6,6 +6,10 @@ import {
   HockeyEngineEvent,
   HockeyMatchConfig,
 } from '../server/engine/hockey';
+import { hockeyEventSchema } from '../server/schemas';
+import { payloadFor } from '../server/triggers';
+import { flatState } from '../server/vmix/feed';
+import type { LiveState } from '../server/engine';
 
 const config: HockeyMatchConfig = {
   id: 'h1',
@@ -252,6 +256,123 @@ describe('Hockey Engine', () => {
       expect(e5.state.shootout?.scoreA).toBe(1);
       expect(e5.state.shootout?.scoreB).toBe(1);
       expect(e5.state.shootout?.rounds).toHaveLength(2);
+    });
+  });
+
+  describe('Phase 3: Schema validation, triggers, and vMix feeds', () => {
+    it('validates hockeyEventSchema correctly', () => {
+      // Valid events
+      expect(hockeyEventSchema.parse({ type: 'START_CLOCK', at: 1000 })).toMatchObject({ type: 'START_CLOCK', at: 1000 });
+      expect(hockeyEventSchema.parse({ type: 'STOP_CLOCK', at: 2000 })).toMatchObject({ type: 'STOP_CLOCK', at: 2000 });
+      expect(hockeyEventSchema.parse({ type: 'ADJUST_CLOCK', deltaMs: 5000 })).toMatchObject({ type: 'ADJUST_CLOCK', deltaMs: 5000 });
+      expect(hockeyEventSchema.parse({ type: 'GOAL', teamSide: 'A', scorerId: 'p1', kind: 'PC', at: 3000 })).toMatchObject({
+        type: 'GOAL', teamSide: 'A', scorerId: 'p1', kind: 'PC',
+      });
+      expect(hockeyEventSchema.parse({ type: 'CARD', teamSide: 'B', playerId: 'p10', kind: 'yellow', durationMs: 300000, at: 4000 })).toMatchObject({
+        type: 'CARD', teamSide: 'B', playerId: 'p10', kind: 'yellow', durationMs: 300000,
+      });
+      expect(hockeyEventSchema.parse({ type: 'PENALTY_CORNER', teamSide: 'A', at: 5000 })).toMatchObject({
+        type: 'PENALTY_CORNER', teamSide: 'A',
+      });
+      expect(hockeyEventSchema.parse({ type: 'SET_PERIOD', period: 3 })).toMatchObject({
+        type: 'SET_PERIOD', period: 3,
+      });
+
+      // Invalid events
+      expect(() => hockeyEventSchema.parse({ type: 'GOAL', teamSide: 'X', scorerId: 'p1' })).toThrow();
+      expect(() => hockeyEventSchema.parse({ type: 'CARD', teamSide: 'A', playerId: 'p1', kind: 'purple', durationMs: 100 })).toThrow();
+      expect(() => hockeyEventSchema.parse({ type: 'SET_PERIOD', period: 5 })).toThrow();
+    });
+
+    it('generates correct overlay payloads via payloadFor()', () => {
+      let events: HockeyEngineEvent[] = [];
+      const baseTime = 1700000000000;
+      const e1 = appendHockeyEvent(config, events, { type: 'START_CLOCK', at: baseTime });
+      events.push(e1.event);
+      const e2 = appendHockeyEvent(config, events, {
+        type: 'GOAL',
+        teamSide: 'A',
+        scorerId: 'p1',
+        assistId: 'p2',
+        kind: 'FG',
+        at: baseTime + 10_000,
+      });
+      events.push(e2.event);
+      const e3 = appendHockeyEvent(config, events, {
+        type: 'CARD',
+        teamSide: 'B',
+        playerId: 'p11',
+        kind: 'yellow',
+        durationMs: 300_000,
+        at: baseTime + 20_000,
+      });
+      events.push(e3.event);
+      const e4 = appendHockeyEvent(config, events, {
+        type: 'PENALTY_CORNER',
+        teamSide: 'A',
+        at: baseTime + 30_000,
+      });
+      events.push(e4.event);
+
+      const state = e4.state as unknown as LiveState;
+
+      // hockey/goal payload
+      const goalPayload = payloadFor('hockey/goal', state);
+      expect(goalPayload).toMatchObject({
+        scorer: 'Harmanpreet Singh',
+        assist: 'Manpreet Singh',
+        kind: 'FG',
+        scoreA: 1,
+        scoreB: 0,
+        teamShort: 'IND',
+      });
+
+      // hockey/card payload
+      const cardPayload = payloadFor('hockey/card', state);
+      expect(cardPayload).toMatchObject({
+        playerName: 'Christopher Ruhr',
+        cardKind: 'yellow',
+        durationLabel: '5m',
+        teamShort: 'GER',
+      });
+
+      // hockey/penalty-corner payload
+      const pcPayload = payloadFor('hockey/penalty-corner', state);
+      expect(pcPayload).toMatchObject({
+        teamShort: 'IND',
+        matchId: 'h1',
+      });
+    });
+
+    it('exports structured hockey fields via flatState() for vMix', () => {
+      let events: HockeyEngineEvent[] = [];
+      const baseTime = 1700000000000;
+      const e1 = appendHockeyEvent(config, events, { type: 'START_CLOCK', at: baseTime });
+      events.push(e1.event);
+      const e = appendHockeyEvent(config, events, {
+        type: 'GOAL',
+        teamSide: 'A',
+        scorerId: 'p1',
+        kind: 'PC',
+        at: baseTime + 10_000,
+      });
+
+      const flat = flatState(e.state as unknown as LiveState);
+      expect(flat).toMatchObject({
+        match_title: 'Olympic Hockey Final',
+        venue: 'National Hockey Stadium',
+        period: 'Q1',
+        clock_running: '1',
+        team_a_name: 'India',
+        team_a_short: 'IND',
+        team_a_score: 1,
+        team_b_name: 'Germany',
+        team_b_short: 'GER',
+        team_b_score: 0,
+        score: '1 - 0',
+        score_text: 'IND 1 - 0 GER',
+      });
+      expect(flat.latest_goal_scorer).toContain('Harmanpreet Singh');
     });
   });
 });

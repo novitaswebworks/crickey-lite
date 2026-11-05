@@ -1,4 +1,5 @@
 import { InningsState, LiveState } from './engine';
+import type { HockeyState } from './engine/hockey';
 
 function teamShort(state: LiveState, inn: InningsState): string {
   return state.teams[inn.battingSide].shortName;
@@ -10,8 +11,68 @@ function lastBall(inn: InningsState) {
 
 /** Builds the data a transient overlay renders, from the match state and optional operator input. */
 export function payloadFor(name: string, state: LiveState, data: Record<string, unknown> = {}): Record<string, unknown> {
-  const inn = state.current ?? state.innings[state.innings.length - 1];
   const base = { matchId: state.matchId };
+
+  // Hockey transient overlays
+  if (name.startsWith('hockey/')) {
+    const hState = state as unknown as HockeyState;
+    switch (name) {
+      case 'hockey/goal': {
+        const fx = hState.effects?.goal;
+        const lastGoal = [...(hState.teams?.A?.goals ?? []), ...(hState.teams?.B?.goals ?? [])].sort((a, b) => b.at - a.at)[0];
+        const teamSide = fx?.teamSide ?? lastGoal?.teamSide ?? 'A';
+        const team = hState.teams?.[teamSide];
+        return {
+          ...base,
+          scorer: fx?.scorerName ?? lastGoal?.scorerName ?? '',
+          assist: fx?.assistName ?? lastGoal?.assistName ?? '',
+          kind: fx?.kind ?? lastGoal?.kind ?? 'FG',
+          time: fx?.time ?? lastGoal?.clockDisplay ?? '',
+          scoreA: fx?.scoreA ?? hState.scoreA ?? 0,
+          scoreB: fx?.scoreB ?? hState.scoreB ?? 0,
+          teamShort: team?.shortName ?? '',
+          ...data,
+        };
+      }
+      case 'hockey/card': {
+        const fx = hState.effects?.card;
+        const lastCard = [...(hState.teams?.A?.cards ?? []), ...(hState.teams?.B?.cards ?? [])].sort((a, b) => b.at - a.at)[0];
+        const teamSide = fx?.teamSide ?? lastCard?.teamSide ?? 'A';
+        const team = hState.teams?.[teamSide];
+        const durationLabel = fx?.durationLabel ?? (
+          lastCard?.kind === 'red'
+            ? 'Permanent'
+            : lastCard?.durationMs && lastCard.durationMs >= 60_000
+            ? `${Math.round(lastCard.durationMs / 60_000)}m`
+            : `${Math.round((lastCard?.durationMs ?? 120_000) / 1000)}s`
+        );
+        return {
+          ...base,
+          playerName: fx?.playerName ?? lastCard?.playerName ?? '',
+          jerseyNo: '',
+          cardKind: fx?.cardKind ?? lastCard?.kind ?? 'green',
+          durationLabel,
+          teamShort: team?.shortName ?? '',
+          ...data,
+        };
+      }
+      case 'hockey/penalty-corner': {
+        const fx = hState.effects?.penaltyCorner;
+        const teamSide = fx?.teamSide ?? 'A';
+        const team = hState.teams?.[teamSide];
+        return {
+          ...base,
+          teamShort: team?.shortName ?? '',
+          matchId: hState.matchId,
+          ...data,
+        };
+      }
+      default:
+        return { ...base, ...data };
+    }
+  }
+
+  const inn = state.current ?? state.innings[state.innings.length - 1];
   if (!inn) return { ...base, ...data };
   const striker = inn.batting.find((b) => b.id === inn.strikerId);
   switch (name) {
