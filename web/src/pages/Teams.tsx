@@ -7,19 +7,21 @@ const fail = (e: unknown) => toast((e as ApiFail).message, 'error');
 export function Teams() {
   const [teams, setTeams] = useState<TeamDto[]>([]);
   const [sel, setSel] = useState<number | null>(null);
-  const [draft, setDraft] = useState({ name: '', shortName: '', color: '#1d4ed8' });
+  const [sport, setSport] = useState<'cricket' | 'hockey'>('cricket');
+  const [draft, setDraft] = useState({ sport: 'cricket' as 'cricket' | 'hockey', name: '', shortName: '', color: '#1d4ed8' });
 
   const load = useCallback(async () => {
-    const t = await get<TeamDto[]>('/api/teams');
+    const t = await get<TeamDto[]>(`/api/teams?sport=${sport}`);
     setTeams(t);
     setSel((cur) => (cur !== null && t.some((x) => x.id === cur) ? cur : t[0]?.id ?? null));
-  }, []);
+  }, [sport]);
   useEffect(() => { void load(); }, [load]);
+  useEffect(() => { setDraft((d) => ({ ...d, sport })); }, [sport]);
 
   const add = async () => {
     try {
       const t = await post<TeamDto>('/api/teams', draft);
-      setDraft({ name: '', shortName: '', color: '#1d4ed8' });
+      setDraft({ sport, name: '', shortName: '', color: '#1d4ed8' });
       await load();
       setSel(t.id);
       toast('Team added');
@@ -29,8 +31,11 @@ export function Teams() {
   return (
     <div className="mx-auto grid max-w-6xl gap-4 p-4 md:grid-cols-[300px_1fr]">
       <aside className="flex flex-col gap-3">
+        <div className="flex gap-1 rounded-xl border border-ink-700 bg-ink-900 p-1">
+          {(['cricket', 'hockey'] as const).map((s) => <button key={s} className={`flex-1 rounded-lg px-3 py-2 text-sm font-bold capitalize ${sport === s ? 'bg-accent text-ink-950' : 'text-slate-400 hover:text-white'}`} onClick={() => { setSport(s); setSel(null); }}>{s === 'cricket' ? '🏏 Cricket' : '🏑 Hockey'}</button>)}
+        </div>
         <div className="card flex flex-col gap-2">
-          <div className="label !mb-0">New team</div>
+          <div className="label !mb-0">New {sport} team</div>
           <input className="input" placeholder="Full name (e.g. Mumbai Indians)" value={draft.name} onChange={(e) => setDraft({ ...draft, name: e.target.value })} />
           <div className="flex gap-2">
             <input className="input" placeholder="Short (3–4)" maxLength={5} value={draft.shortName} onChange={(e) => setDraft({ ...draft, shortName: e.target.value })} />
@@ -45,13 +50,13 @@ export function Teams() {
           </button>
         ))}
       </aside>
-      {sel !== null && teams.find((t) => t.id === sel) ? <TeamEditor key={sel} team={teams.find((t) => t.id === sel)!} onChange={load} /> : <Empty title="No teams yet" hint="Add two teams on the left to get started." />}
+      {sel !== null && teams.find((t) => t.id === sel) ? <TeamEditor key={`${sport}-${sel}`} team={teams.find((t) => t.id === sel)!} onChange={load} /> : <Empty title={`No ${sport} team selected`} hint={`Add or select a ${sport} team on the left. Cricket and hockey keep separate rosters.`} />}
     </div>
   );
 }
 
 function TeamEditor({ team, onChange }: { team: TeamDto; onChange: () => Promise<void> }) {
-  const [form, setForm] = useState({ name: team.name, shortName: team.shortName, color: team.color, coach: team.coach ?? '' });
+  const [form, setForm] = useState({ sport: team.sport, name: team.name, shortName: team.shortName, color: team.color, coach: team.coach ?? '' });
   const [players, setPlayers] = useState<PlayerDto[]>([]);
   const [bulk, setBulk] = useState('');
   const load = useCallback(async () => setPlayers(await get<PlayerDto[]>(`/api/teams/${team.id}/players`)), [team.id]);
@@ -91,7 +96,7 @@ function TeamEditor({ team, onChange }: { team: TeamDto; onChange: () => Promise
         </div>
       </div>
       <div className="card">
-        <div className="label">Players — batting / lineup order top to bottom</div>
+        <div className="label">{team.sport === 'cricket' ? 'Cricket squad — batting order top to bottom' : 'Hockey squad — lineup order top to bottom'}</div>
         <div className="flex flex-col gap-1.5">
           {players.length === 0 && <p className="text-sm text-slate-500">No players yet. Paste names below, one per line.</p>}
           {players.map((p, i) => (
@@ -123,7 +128,13 @@ function TeamEditor({ team, onChange }: { team: TeamDto; onChange: () => Promise
               </label>
               <input className="input" placeholder="Full name" value={p.name} onChange={(e) => patch(p.id, 'name', e.target.value)} onBlur={() => void savePlayer(p)} />
               <input className="input" placeholder="#" value={p.shirtNo} onChange={(e) => patch(p.id, 'shirtNo', e.target.value)} onBlur={() => void savePlayer(p)} title="Jersey Number" />
-              <input className="input" placeholder="Role (GK/DEF/MID/FWD)" value={p.role} onChange={(e) => patch(p.id, 'role', e.target.value)} onBlur={() => void savePlayer(p)} />
+              <select className="input" aria-label={`${p.name} position`} value={p.role} onChange={(e) => { patch(p.id, 'role', e.target.value); void savePlayer({ ...p, role: e.target.value }); }}>
+                <option value="">Choose {team.sport === 'cricket' ? 'role' : 'position'}</option>
+                {team.sport === 'cricket'
+                  ? ['Batter', 'Bowler', 'Wicketkeeper', 'All-rounder'].map((role) => <option key={role} value={role}>{role}</option>)
+                  : ['Goalkeeper', 'Defender', 'Midfielder', 'Forward', 'Utility'].map((role) => <option key={role} value={role}>{role}</option>)}
+                {p.role && !(team.sport === 'cricket' ? ['Batter', 'Bowler', 'Wicketkeeper', 'All-rounder'] : ['Goalkeeper', 'Defender', 'Midfielder', 'Forward', 'Utility']).includes(p.role) && <option value={p.role}>{p.role} (existing)</option>}
+              </select>
               {/* Captain toggle */}
               <button
                 type="button"

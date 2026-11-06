@@ -42,6 +42,16 @@ export function registerCatalogRoutes(app: Express, ctx: Context): void {
     return t;
   };
   const teamInUse = (id: number) => store.list<MatchRow>('matches').some((m) => m.teamAId === id || m.teamBId === id);
+  const teamSport = (t: Doc<TeamRow>): 'cricket' | 'hockey' => {
+    if (t.sport) return t.sport;
+    const usedBy = store.list<MatchRow>('matches')
+      .filter((m) => m.teamAId === t.id || m.teamBId === t.id)
+      .sort((a, b) => a.createdAt.localeCompare(b.createdAt));
+    if (usedBy[0]?.sport) return usedBy[0].sport;
+    const roles = store.list<PlayerRow>('players', t.id).map((p) => p.role.toLowerCase());
+    if (roles.some((r) => /goalkeeper|goalie|\bgk\b|defender|\bdef\b|midfielder|\bmid\b|forward|\bfwd\b/.test(r))) return 'hockey';
+    return 'cricket';
+  };
 
   app.get('/api/health', (_req, res) => res.json({ ok: true, storage: store.kind }));
 
@@ -60,8 +70,10 @@ export function registerCatalogRoutes(app: Express, ctx: Context): void {
   });
 
   // ---- teams -------------------------------------------------------------------------------
-  app.get('/api/teams', (_req, res) => {
-    res.json(store.list<TeamRow>('teams').map((t) => ({ ...t, playerCount: store.list('players', t.id).length })));
+  app.get('/api/teams', (req, res) => {
+    const requestedSport = req.query.sport === 'hockey' ? 'hockey' : req.query.sport === 'cricket' ? 'cricket' : null;
+    const rows = store.list<TeamRow>('teams').map((t) => ({ ...t, sport: teamSport(t), playerCount: store.list('players', t.id).length }));
+    res.json(requestedSport ? rows.filter((t) => t.sport === requestedSport) : rows);
   });
   app.post('/api/teams', (req, res) => {
     const t = teamSchema.parse(req.body);
@@ -187,7 +199,9 @@ export function registerCatalogRoutes(app: Express, ctx: Context): void {
     res.json({ ...row, state: matches.state(id) });
   });
   app.delete('/api/matches/:id', (req, res) => {
-    matches.remove(num(req.params.id));
+    const id = num(req.params.id);
+    if (store.list<{ matchId: number }>('ops-schedules').some((s) => s.matchId === id)) throw new ApiError(409, 'MATCH_SCHEDULED', 'Remove this match from Broadcast Operations before deleting it.');
+    matches.remove(id);
     res.json({ ok: true });
   });
   app.post('/api/matches/:id/activate', (req, res) => {

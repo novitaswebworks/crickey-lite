@@ -147,23 +147,44 @@ export function registerLiveRoutes(app: Express, ctx: Context): void {
     z.object({ data: z.record(z.string(), z.unknown()).optional() }).parse(body ?? {}).data;
 
   app.get('/api/overlays', (_req, res) => res.json({ overlays: overlays.snapshot(), clients: ctx.hub.counts() }));
+  app.get('/api/overlays/history', (req, res) => {
+    const requested = Number(req.query.limit ?? 50);
+    const limit = Number.isInteger(requested) ? requested : 50;
+    res.json(overlays.history(limit));
+  });
   app.post('/api/overlays/hide-all', (_req, res) => {
     overlays.hideAll();
     res.json({ overlays: overlays.snapshot() });
   });
-  const putOnAir = (req: { params: { name: string }; body: unknown }) => {
-    const name = overlayName(req.params.name);
-    const data = dataOf(req.body);
+  const putOnAir = (rawName: string, body: unknown, action: 'show' | 'fire' = 'show') => {
+    const name = overlayName(rawName);
+    const data = dataOf(body);
     const active = matches.activeId();
     const payload = TRANSIENT.includes(name) && active !== null ? payloadFor(name, matches.state(active), data) : data;
-    overlays.show(name, payload, active);
+    overlays.show(name, payload, active, action);
     return overlays.snapshot();
   };
-  app.post('/api/overlays/:name/show', (req, res) => res.json({ overlays: putOnAir(req) }));
-  app.post('/api/overlays/:name/trigger', (req, res) => res.json({ overlays: putOnAir(req) }));
+  app.post('/api/overlays/:name/show', (req, res) => res.json({ overlays: putOnAir(req.params.name, req.body) }));
+  app.post('/api/overlays/:name/trigger', (req, res) => res.json({ overlays: putOnAir(req.params.name, req.body, 'fire') }));
   app.post('/api/overlays/:name/hide', (req, res) => {
     overlays.hide(overlayName(req.params.name));
     res.json({ overlays: overlays.snapshot() });
+  });
+
+  // Hockey overlay names contain a slash (for example `hockey/goal`). Express' `:name`
+  // parameter only captures one path segment, so expose the nested form used by the
+  // Broadcast page as well as the legacy single-segment cricket routes above.
+  app.post(/^\/api\/overlays\/([^/]+)\/([^/]+)\/(show|trigger|hide)$/, (req, res) => {
+    const params = req.params as unknown as Record<number, string>;
+    const group = params[0];
+    const leaf = params[1];
+    const action = params[2];
+    const name = overlayName(`${group}/${leaf}`);
+    if (action === 'hide') {
+      overlays.hide(name);
+      return void res.json({ overlays: overlays.snapshot() });
+    }
+    return void res.json({ overlays: putOnAir(name, req.body, action === 'trigger' ? 'fire' : 'show') });
   });
 
   app.get('/api/clients', (_req, res) => res.json(ctx.hub.counts()));

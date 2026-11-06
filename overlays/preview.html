@@ -18,6 +18,7 @@
   .cell { background: var(--panel); border: 1px solid var(--line); border-radius: 16px; padding: 12px; }
   .cell h2 { margin: 0 0 8px; font-size: 12px; font-weight: 700; color: var(--muted); letter-spacing: .14em; text-transform: uppercase; }
   .frame { position: relative; width: 100%; aspect-ratio: 16 / 9; overflow: hidden; border: 1px solid var(--line2); border-radius: 10px; }
+  .frame::after { content: ''; position: absolute; z-index: 2; inset: 5%; border: 1px dashed rgba(240, 138, 75, .75); pointer-events: none; }
   .frame iframe { position: absolute; left: 0; top: 0; width: 1920px; height: 1080px; border: 0; transform-origin: 0 0; }
   .credit { padding: 14px 20px 22px; text-align: center; font-size: 12px; color: var(--muted); }
   .credit a { color: var(--cream); font-weight: 600; }
@@ -29,7 +30,7 @@
   <label>Theme <select id="theme"><option>classic</option><option>neon</option><option>minimal</option></select></label>
   <label>Position <select id="pos"><option value="bottom">bottom</option><option value="top">top</option></select></label>
   <label>Size <select id="size"><option value="1920x1080">1920 × 1080</option><option value="1280x720">1280 × 720</option></select></label>
-  <span class="hint">Every overlay is forced visible on a checkerboard and follows the active match live. Your choices are remembered.</span>
+  <span class="hint">1920 × 1080 Full HD canvas · dashed inset marks the 5% title-safe area · overlays follow the active match live.</span>
   <span id="saveNote" style="color:var(--accent)"></span>
 </header>
 <div class="grid" id="grid"></div>

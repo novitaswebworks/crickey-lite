@@ -10,7 +10,7 @@ export function History({ goto }: { goto: (p: string) => void }) {
   const load = useCallback(async () => setList(await get<MatchSummary[]>('/api/matches')), []);
   useEffect(() => { void load(); }, [load]);
 
-  const resume = async (id: number) => { try { await post(`/api/matches/${id}/activate`); goto('live'); } catch (e) { toast((e as ApiFail).message, 'error'); } };
+  const resume = async (id: number) => { try { await post(`/api/matches/${id}/activate`); goto('control'); } catch (e) { toast((e as ApiFail).message, 'error'); } };
   const remove = async (m: MatchSummary) => {
     if (!window.confirm(`Delete "${m.title || `Match #${m.id}`}" and its whole scorecard? This cannot be undone.`)) return;
     try { await del(`/api/matches/${m.id}`); await load(); toast('Match deleted'); } catch (e) { toast((e as ApiFail).message, 'error'); }

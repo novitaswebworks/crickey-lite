@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { ApiFail, Info, MatchSummary, get, post, put } from '../api';
+import { ApiFail, Info, MatchSummary, OverlayActivity, get, post, put } from '../api';
 import { useRealtime } from '../realtime';
 import { Field, copyText, toast } from '../ui';
 
@@ -54,6 +54,8 @@ export function Broadcast() {
   const [vmix, setVmix] = useState<{ state: string; lastError: string | null; enabled: boolean } | null>(null);
   const [log, setLog] = useState<{ at: string; url: string; ok: boolean; note: string }[]>([]);
   const [matches, setMatches] = useState<MatchSummary[]>([]);
+  const [activity, setActivity] = useState<OverlayActivity[]>([]);
+  const [now, setNow] = useState(Date.now());
 
   // The theme / position / scale / follow choices live on the server so they survive reloads and restarts.
   useEffect(() => {
@@ -66,6 +68,13 @@ export function Broadcast() {
   useEffect(() => {
     const t = setInterval(() => { void get<{ running: boolean; remaining: number }>('/api/sim').then(setSimStatus); void get<typeof vmix>('/api/vmix/status').then(setVmix); }, 1500);
     return () => clearInterval(t);
+  }, []);
+  useEffect(() => {
+    const refresh = () => void get<OverlayActivity[]>('/api/overlays/history?limit=30').then(setActivity).catch(fail);
+    refresh();
+    const t = setInterval(refresh, 3000);
+    const clock = setInterval(() => setNow(Date.now()), 1000);
+    return () => { clearInterval(t); clearInterval(clock); };
   }, []);
 
   const base = info?.publicBaseUrl || location.origin;
@@ -80,18 +89,23 @@ export function Broadcast() {
     if (HOCKEY_OVERLAYS.has(n)) return activeSport === 'hockey';
     return activeSport === 'cricket';
   });
-  const url = (n: string) => {
+  const url = (n: string, requestedSide?: 'A' | 'B') => {
     const q = new URLSearchParams();
     if (fixed && matchId !== null) q.set('match', String(matchId));
     q.set('theme', theme);
     if (position !== 'bottom') q.set('position', position);
     if (scale !== '1') q.set('scale', scale);
     if (n === 'hockey/starting11' || n === 'hockey/substitutes') {
-      q.set('side', hockeySide[n] ?? 'A');
+      q.set('side', requestedSide ?? hockeySide[n] ?? 'A');
     }
     return `${base}/overlays/${n}.html?${q}`;
   };
-  const allUrls = useMemo(() => names.map((n) => `${LABELS[n] ?? n}\t${url(n)}`).join('\n'), [names, theme, position, scale, fixed, matchId, base, hockeySide]);
+  const allUrls = useMemo(() => names.flatMap((n) => {
+    if (n === 'hockey/starting11' || n === 'hockey/substitutes') {
+      return (['A', 'B'] as const).map((side) => `${LABELS[n] ?? n} · Team ${side}\t${url(n, side)}`);
+    }
+    return [`${LABELS[n] ?? n}\t${url(n)}`];
+  }).join('\n'), [names, theme, position, scale, fixed, matchId, base, hockeySide]);
 
   const act = async (path: string, body?: unknown) => { try { await post(path, body); } catch (e) { fail(e); } };
   const setSimulate = async (start: boolean) => {
@@ -100,6 +114,26 @@ export function Broadcast() {
       setSimStatus(await post(start ? '/api/sim/start' : '/api/sim/stop', start ? { matchId, ...sim } : {}));
     } catch (e) { fail(e); }
   };
+
+  const liveMatch = state as any;
+  const lineupCount = (side: 'A' | 'B') => liveMatch?.teams?.[side]?.starting11?.length ?? 0;
+  const sourceName = activeSport === 'hockey' ? 'hockey/scorebug' : 'scorebug';
+  const readiness = [
+    { label: 'Active match selected', ok: matchId !== null },
+    { label: 'Both teams assigned', ok: !!liveMatch?.teams?.A?.name && !!liveMatch?.teams?.B?.name },
+    { label: 'Venue entered', ok: !!liveMatch?.venue?.trim() },
+    ...(activeSport === 'hockey' ? [
+      { label: `Team A starting lineup (${lineupCount('A')}/11)`, ok: lineupCount('A') >= 11 },
+      { label: `Team B starting lineup (${lineupCount('B')}/11)`, ok: lineupCount('B') >= 11 },
+    ] : []),
+    { label: 'Scorebug source connected', ok: (clients.byOverlay[sourceName] ?? 0) > 0 },
+  ];
+  const activityLabel = (entry: OverlayActivity) => entry.action === 'hide-all'
+    ? 'Hide all overlays'
+    : `${entry.action === 'fire' ? 'Fired' : entry.action === 'hide' ? 'Hid' : 'Showed'} ${LABELS[entry.overlay] ?? entry.overlay}${entry.matchId !== null ? ` · ${matches.find((m) => m.id === entry.matchId)?.title ?? `Match #${entry.matchId}`}` : ''}`;
+  const remaining = (entry: (typeof overlays)[string]) => entry.visible && entry.durationMs && entry.startedAt
+    ? Math.max(0, Math.ceil((entry.startedAt + entry.durationMs - now) / 1000))
+    : null;
 
   return (
     <div className="mx-auto flex max-w-6xl flex-col gap-4 p-4">
@@ -118,6 +152,27 @@ export function Broadcast() {
         <Field label="Follow"><select className="input" value={fixed ? 'fixed' : 'active'} onChange={(e) => { setFixed(e.target.value === 'fixed'); save({ view: { follow: e.target.value } }); }}><option value="active">Active match</option><option value="fixed">This match only</option></select></Field>
         <div className="flex items-end gap-2"><button className="btn w-full" onClick={() => void copyText(allUrls)}>Copy all vMix URLs</button></div>
       </section>
+
+      {(
+        <section className="card grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(260px,0.7fr)]">
+          <div>
+            <div className="mb-2 flex items-baseline justify-between gap-3">
+              <div className="label !mb-0">Match-day readiness</div>
+              <span className={`text-xs font-semibold ${readiness.every((item) => item.ok) ? 'text-emerald-400' : 'text-amber-300'}`}>
+                {readiness.filter((item) => item.ok).length}/{readiness.length} ready
+              </span>
+            </div>
+            <div className="grid gap-x-5 gap-y-1 sm:grid-cols-2">
+              {readiness.map((item) => <div key={item.label} className={`text-sm ${item.ok ? 'text-slate-300' : 'text-amber-200'}`}><span className="mr-2">{item.ok ? '✓' : '!'}</span>{item.label}</div>)}
+            </div>
+          </div>
+          <div className="border-t border-ink-700 pt-3 lg:border-l lg:border-t-0 lg:pl-4 lg:pt-0">
+            <div className="label !mb-2">Output standard</div>
+            <p className="text-sm text-slate-200">Use a transparent 1920 × 1080 browser source in OBS/vMix for Full HD.</p>
+            <p className="mt-1 text-xs text-slate-400">Keep text and player labels inside the inner 90% title-safe area. Preview before going on air.</p>
+          </div>
+        </section>
+      )}
 
       <section className="card overflow-x-auto">
         <table className="w-full text-sm">
@@ -139,18 +194,12 @@ export function Broadcast() {
                   <td className="max-w-[420px] truncate font-mono text-xs text-slate-300" title={url(n)}>{url(n)}</td>
                   <td className="no-print whitespace-nowrap py-1 text-right">
                     {isTeamSpecific && (
-                      <span className="mr-2 inline-flex rounded-lg border border-ink-600 bg-ink-900 p-0.5 align-middle">
+                      <span className="mr-2 inline-flex items-center gap-1 align-middle">
                         {(['A', 'B'] as const).map((s) => (
-                          <button
-                            key={s}
-                            type="button"
-                            className={`px-2 py-0.5 text-xs font-bold rounded ${
-                              side === s ? 'bg-accent text-ink-950' : 'text-slate-400 hover:text-white'
-                            }`}
-                            onClick={() => setHockeySide((prev) => ({ ...prev, [n]: s }))}
-                          >
-                            Team {s}
-                          </button>
+                          <span key={s} className="inline-flex items-center gap-1">
+                            <button type="button" className={`btn !min-h-[32px] !px-2 text-xs ${side === s ? '!border-accent !text-white' : ''}`} onClick={() => setHockeySide((prev) => ({ ...prev, [n]: s }))}>Team {s}</button>
+                            <button type="button" className="btn !min-h-[32px] !px-2 text-xs" onClick={() => void copyText(url(n, s))} title={`Copy ${LABELS[n]} Team ${s} URL`}>Copy URL</button>
+                          </span>
                         ))}
                       </span>
                     )}
@@ -186,7 +235,7 @@ export function Broadcast() {
                         )
                       }
                     >
-                      {o?.visible ? '● ON AIR' : 'Show'}
+                      {o?.visible ? `● ON AIR${remaining(o) !== null ? ` · ${remaining(o)}s` : ''}` : 'Show'}
                     </button>
                   </td>
                 </tr>
@@ -194,7 +243,24 @@ export function Broadcast() {
             })}
           </tbody>
         </table>
-        <p className="no-print mt-3 text-xs text-slate-400">Persistent overlays stay on until hidden; four, six, wicket, new batter, over summary and milestone hide themselves after their timer (Settings). Overlay on/off state lives on the server, so a refreshed browser source restores correctly.</p>
+        <p className="no-print mt-3 text-xs text-slate-400">Persistent overlays stay on until hidden; timed event graphics hide themselves after their timer (Settings). Event graphics temporarily hide a visible Scorebug and restore it when the graphic ends unless you manually change the Scorebug. Overlay on/off state lives on the server, so a refreshed browser source restores correctly.</p>
+      </section>
+
+      <section className="card">
+        <div className="mb-2 flex items-baseline justify-between gap-3">
+          <div className="label !mb-0">Broadcast activity</div>
+          <span className="text-xs text-slate-500">Latest {activity.length} overlay actions · saved on this server</span>
+        </div>
+        {activity.length ? (
+          <div className="max-h-64 divide-y divide-ink-700 overflow-y-auto">
+            {activity.map((entry) => (
+              <div key={entry.id} className="flex items-center justify-between gap-4 py-2 text-sm">
+                <span className="text-slate-200">{activityLabel(entry)}</span>
+                <span className="shrink-0 font-mono text-xs text-slate-500">{new Date(entry.at).toLocaleTimeString()}</span>
+              </div>
+            ))}
+          </div>
+        ) : <p className="py-2 text-sm text-slate-400">No overlay actions recorded yet.</p>}
       </section>
 
       <section className="no-print grid gap-4 md:grid-cols-2">

@@ -77,6 +77,7 @@ export const hockeyEventSchema = z.discriminatedUnion('type', [
     kind: z.enum(['won', 'draw', 'noresult']),
     winner: z.enum(['A', 'B']).optional(),
     text: z.string().max(160).optional(),
+    at: z.number().optional(),
   }),
   z.object({
     type: z.literal('ADD_PLAYER'),
@@ -86,6 +87,7 @@ export const hockeyEventSchema = z.discriminatedUnion('type', [
 ]);
 
 export const teamSchema = z.object({
+  sport: z.enum(['cricket', 'hockey']).default('cricket'),
   name: z.string().trim().min(1).max(60),
   shortName: z.string().trim().min(2).max(5).transform((s) => s.toUpperCase()),
   color: z.string().regex(/^#[0-9a-fA-F]{6}$/, 'Use a hex colour such as #1d4ed8'),

@@ -18,7 +18,7 @@
   </div>
 </div>
 </div>
-<script src="overlay-client.js"></script>
+<script src="overlay-client.js?v=mockup1-20261105"></script>
 <script>
 Overlay.init({ name: 'over-summary', transient: true,
   sample: function (s) { var i = s.current || s.innings[s.innings.length - 1]; return i && i.lastOver ? i.lastOver : { over: 1, runs: 8, chips: [{ label: '1', kind: 'run' }, { label: '4', kind: 'four' }, { label: '0', kind: 'dot' }, { label: 'Wd', kind: 'wide' }, { label: '2', kind: 'run' }, { label: '1', kind: 'run' }], bowlerName: 'Bowler', bowlerFigures: '1.0-0-8-0', score: '8/0' }; },

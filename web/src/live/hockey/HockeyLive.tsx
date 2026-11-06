@@ -10,6 +10,7 @@ import { GoalWizard } from './GoalWizard';
 import { HockeyScorecard } from './HockeyScorecard';
 import { ShootoutModal } from './ShootoutModal';
 import { SuspensionBar } from './SuspensionBar';
+import { LiveOverlayLinks } from '../LiveOverlayLinks';
 
 type ModalKind = null | 'goal' | 'card' | 'shootout' | 'result' | 'pc';
 
@@ -24,11 +25,13 @@ export function HockeyLive() {
   const [resultText, setResultText] = useState<string>('');
 
   const sendEvent = async (payload: HockeyEventPayload) => {
-    if (!matchId) return;
+    if (!matchId) return false;
     try {
       await post<{ state: HockeyState }>(`/api/matches/${matchId}/events`, payload);
+      return true;
     } catch (e) {
       toast((e as ApiFail).message, 'error');
+      return false;
     }
   };
 
@@ -123,6 +126,26 @@ export function HockeyLive() {
   const teamA = state.teams.A;
   const teamB = state.teams.B;
 
+  if (state.status === 'completed') {
+    return (
+      <div className="mx-auto flex max-w-5xl flex-col gap-4 p-4">
+        <header className="rounded-2xl border border-emerald-700 bg-ink-800 px-5 py-4 shadow-xl">
+          <div className="text-xs font-bold uppercase tracking-widest text-emerald-300">Match completed · {state.title || 'Hockey Match'}</div>
+          <div className="mt-2 flex flex-wrap items-center justify-center gap-4 text-center">
+            <span className="text-2xl font-black">{teamA.shortName}</span>
+            <span className="font-mono text-5xl font-black text-accent">{state.scoreA} – {state.scoreB}</span>
+            <span className="text-2xl font-black">{teamB.shortName}</span>
+          </div>
+          <div className="mt-2 text-center text-lg font-bold text-slate-200">{state.result?.text ?? state.statusText}</div>
+        </header>
+        <HockeyScorecard state={state} />
+        <div className="flex justify-center">
+          <button className="btn" onClick={() => void undo()}>Undo match finish</button>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="mx-auto flex max-w-[1400px] flex-col gap-4 p-4">
       {/* Top Header Bar */}
@@ -167,8 +190,6 @@ export function HockeyLive() {
             className={`rounded-lg px-3 py-1.5 text-xs font-black tracking-wider ${
               state.status === 'live'
                 ? 'bg-red-600 text-white animate-pulse'
-                : state.status === 'completed'
-                ? 'bg-emerald-600 text-white'
                 : 'bg-ink-700 text-slate-300'
             }`}
           >
@@ -182,6 +203,8 @@ export function HockeyLive() {
           </button>
         </div>
       </header>
+
+      <LiveOverlayLinks matchId={matchId} sport="hockey" />
 
       {/* Main Scoring Grid */}
       <div className="grid gap-4 lg:grid-cols-[minmax(0,7fr)_minmax(0,5fr)]">
@@ -411,15 +434,17 @@ export function HockeyLive() {
 
             <button
               type="button"
-              onClick={() => {
-                void sendEvent({
+              onClick={async () => {
+                const saved = await sendEvent({
                   type: 'MATCH_RESULT',
                   kind: resultKind,
                   winner: resultKind === 'won' ? resultWinner : undefined,
                   text: resultText || undefined,
+                  at: Date.now(),
                 });
+                if (!saved) return;
                 setModal(null);
-                toast('Match result recorded!');
+                toast('Match finished');
               }}
               className="btn btn-primary !min-h-[48px] mt-2 w-full text-base font-black shadow-lg"
             >

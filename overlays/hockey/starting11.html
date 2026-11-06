@@ -10,6 +10,8 @@
 * { box-sizing: border-box; }
 body { margin: 0; padding: 0; overflow: hidden; background: transparent; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
 #stage { width: 100vw; height: 100vh; position: relative; display: flex; flex-direction: column; align-items: center; justify-content: flex-end; padding-bottom: 2.5rem; }
+#stage.stage { opacity: 0; visibility: hidden; transition: opacity .4s ease, visibility 0s linear .4s; }
+#stage.stage.on { opacity: 1; visibility: visible; transition-delay: 0s; }
 
 /* 3D Pitch Container */
 .pitch-container {
@@ -231,6 +233,28 @@ body { margin: 0; padding: 0; overflow: hidden; background: transparent; font-fa
   letter-spacing: 0.05em;
   box-shadow: 0 10px 25px rgba(0, 0, 0, 0.5);
 }
+/* Full-frame tactical composition, designed for 1080p and proportional at 720p. */
+#stage { padding: 0 4vw 4vh; justify-content: flex-end; }
+.pitch-container { top: 5vh; width: min(78vw, 1500px); height: 67vh; perspective: 1500px; }
+.pitch { width: 100%; height: 100%; border: .2rem solid #ffffffc9; border-radius: .7rem;
+  transform: rotateX(18deg); background: linear-gradient(180deg,#102e68 0%,#091c48 100%);
+  box-shadow: 0 2rem 4rem #0009,inset 0 0 5rem #0004; }
+.pitch-players { padding: 2rem 3rem; }
+.formation-row { min-height: 7rem; }
+.player-card { min-width: 10rem; filter: drop-shadow(0 .45rem .5rem #0008); }
+.player-img-wrap { width: 6.4rem; height: 6.4rem; margin-bottom: -.7rem; }
+.player-img { max-width: 6.4rem; max-height: 6.4rem; }
+.player-silhouette { width: 4.6rem; height: 4.6rem; font-size: 1.15rem; }
+.player-tag { height: 2rem; filter: none; }
+.player-num { min-width: 2.5rem; font-size: 1.15rem; background: #f4f6fa; }
+.player-name { max-width: 13rem; overflow: hidden; text-overflow: ellipsis; font-size: 1rem; background: #087bc0; }
+.bottom-bar { width: min(92vw, 1700px); justify-content: space-between; gap: 1rem; }
+.league-badge,.sponsor-badge { border: 0; border-radius: .2rem; padding: .8rem 1.3rem; background: #091633eF; font-size: 1.15rem; box-shadow: 0 .8rem 1.5rem #0007; }
+.team-plate { flex: 1; min-width: 0; border: 0; border-top: .2rem solid var(--team-color,#2563eb); border-radius: .2rem; padding: .75rem 2rem;
+  background: linear-gradient(100deg,#101d3c,#071329); box-shadow: 0 .8rem 1.5rem #0008; }
+.team-name { font-size: 2.1rem; letter-spacing: .1em; }
+.team-coach { font-size: 1.1rem; }
+@media (max-height: 760px) { .pitch-container { height: 62vh; } .pitch-players { padding: 1rem 2rem; } .formation-row { min-height: 5rem; } }
 </style>
 </head>
 <body>
@@ -269,7 +293,7 @@ body { margin: 0; padding: 0; overflow: hidden; background: transparent; font-fa
   </div>
 </div>
 
-<script src="../overlay-client.js"></script>
+<script src="../overlay-client.js?v=mockup1-20261105"></script>
 <script>
 function buildPlayerCard(p, teamColor) {
   var card = document.createElement('div');
@@ -311,8 +335,23 @@ function buildPlayerCard(p, teamColor) {
   return card;
 }
 
+function hockeyPosition(role) {
+  var value = String(role || '').trim().toUpperCase();
+  if (/\b(GK|GOALKEEPER|GOALIE|KEEPER)\b/.test(value)) return 'gk';
+  if (/\b(DEF|DEFENDER|DEFENCE|DEFENSE|BACK|STOPPER)\b/.test(value)) return 'def';
+  if (/\b(MID|MIDFIELDER|MIDFIELD|HALF)\b/.test(value)) return 'mid';
+  if (/\b(FWD|FORWARD|STRIKER|ATTACKER|ATTACK)\b/.test(value)) return 'fwd';
+  return null;
+}
+
 Overlay.init({
   name: 'hockey/starting11',
+  // Team A and Team B can each have a browser source in the same OBS scene.
+  // Only the source matching the side selected in the Control Room goes on air.
+  isVisible: function (_state, payload, _entry, cfg) {
+    var requestedSide = new URLSearchParams(window.location.search).get('side');
+    return cfg.force || !requestedSide || !payload || !payload.side || payload.side === requestedSide;
+  },
   sample: function () {
     return {
       matchId: 'sample',
@@ -342,14 +381,18 @@ Overlay.init({
     if (!s) return;
     U.empty(false);
 
-    // Target team side (URL query ?side=B or data payload)
+    // Each browser source can have its own team URL while sharing one overlay feed.
+    // Its URL side must win over the operator's shared Fire/Show payload.
     var urlParams = new URLSearchParams(window.location.search);
-    var side = (p && p.side) || urlParams.get('side') || (s && s.side) || 'A';
+    var requestedSide = urlParams.get('side');
+    var side = requestedSide === 'A' || requestedSide === 'B'
+      ? requestedSide
+      : ((p && p.side === 'B') || (s && s.side === 'B') ? 'B' : 'A');
     var team = s.teams ? s.teams[side] : null;
 
-    var teamName = (p && p.teamName) || (team ? team.name : 'Team ' + side);
-    var teamColor = (p && p.teamColor) || (team ? team.color : '#0055d4');
-    var coach = (p && p.coach) || (team ? team.coach : '') || '';
+    var teamName = (team && team.name) || (p && p.teamName) || 'Team ' + side;
+    var teamColor = (team && team.color) || (p && p.teamColor) || '#0055d4';
+    var coach = (team && team.coach) || (p && p.coach) || '';
     var tournament = (p && p.tournament) || s.tournament || 'FIH PRO LEAGUE';
     var sponsor = (p && p.sponsor) || s.sponsor || 'polytan';
 
@@ -362,7 +405,9 @@ Overlay.init({
     U.setText(U.el('sponsor'), sponsor);
     if (team) U.teamBadge(U.el('teamBadge'), team);
 
-    var rawPlayers = (p && p.players && p.players.length) ? p.players : (team && team.starting11 && team.starting11.length ? team.starting11 : (team ? team.players : []));
+    var rawPlayers = team && team.starting11 && team.starting11.length
+      ? team.starting11
+      : (team && team.players && team.players.length ? team.players : ((p && p.players) || []));
     var players = rawPlayers.slice(0, 11);
 
     var gk = [];
@@ -370,15 +415,18 @@ Overlay.init({
     var mid = [];
     var fwd = [];
 
-    // Categorize by role if present, else standard 1-4-3-3 hockey formation
-    var hasRoles = players.some(function (x) { return x.role && x.role.trim(); });
-    if (hasRoles) {
+    // Use role-based placement only when every player has a recognized hockey
+    // position. Cricket roles such as Batter/Bowler are not hockey positions;
+    // in that case use the standard 1-4-3-3 lineup order instead of putting
+    // every unknown role in the forward row.
+    var hasHockeyPositions = players.length > 0 && players.every(function (x) { return hockeyPosition(x.role) !== null; });
+    if (hasHockeyPositions) {
       for (var i = 0; i < players.length; i++) {
-        var r = (players[i].role || '').toUpperCase();
-        if (r.indexOf('GK') >= 0 || r.indexOf('GOAL') >= 0) gk.push(players[i]);
-        else if (r.indexOf('DEF') >= 0 || r.indexOf('BACK') >= 0) def.push(players[i]);
-        else if (r.indexOf('MID') >= 0 || r.indexOf('HALF') >= 0) mid.push(players[i]);
-        else fwd.push(players[i]);
+        var position = hockeyPosition(players[i].role);
+        if (position === 'gk') gk.push(players[i]);
+        else if (position === 'def') def.push(players[i]);
+        else if (position === 'mid') mid.push(players[i]);
+        else if (position === 'fwd') fwd.push(players[i]);
       }
     } else {
       if (players.length > 0) gk.push(players[0]);

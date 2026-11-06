@@ -8,19 +8,25 @@ Live cricket scoring for ONE operator, plus broadcast graphics for **vMix** (pri
 
 ```bash
 npm install
-npm run build      # builds the operator UI and type-checks the server
-npm start          # http://localhost:3000
+npm run dev         # development: http://localhost:5173, live reload enabled
 npm run seed       # optional: two demo teams + a demo T20 match (becomes the active match)
 ```
 
-Node 20+. `npm start` runs the TypeScript server through `tsx` (no separate server compile step). On start it prints the operator URL, your LAN URLs and every overlay URL.
+Node 20+. In development, Vite serves the operator panel at `http://localhost:5173` with browser hot reload; the API and overlay server stays at `http://localhost:3000`. `tsx watch` restarts the API automatically when server TypeScript changes, so you don't need to stop and restart it by hand. OBS/vMix browser sources should continue using the printed `:3000/overlays/...` URLs.
+
+If the API server is already running with `npm start`, use a second terminal and run `npm run dev:web`; this gives the panel hot reload through Vite without disconnecting the existing server or overlay sources. When off-air, switch to `npm run dev` to also enable automatic API-server reloads for server-code changes.
+
+For a production-like run without development watchers, use `npm run build && npm start`; the panel and overlays are served from `http://localhost:3000`. If an OBS/vMix browser source has already loaded an overlay page, use that source's Refresh action after changing overlay HTML/CSS so it fetches the updated file.
 
 1. **Teams** – add two teams (name, 3–4 letter short name, colour, optional logo) and paste players one per line. Order = batting order.
 2. **Match setup** – pick teams, overs, players per side (2–11), toss, playing XI → *Create match*. It becomes the active match.
 3. **Live scoring** – *Start innings*, choose openers and bowler, then score.
-4. **Overlays** – copy URLs, put overlays on air, fire stings, run the simulator. Theme, position, scale, follow mode and the preview page's size are stored in the server settings, so they survive reloads and restarts (and are shared by the Overlays page and `preview.html`).
+4. **Operations** – schedule a match for broadcast, customize its cricket/hockey rundown, complete technical preflight checks, and keep a match-linked incident log. Critical checks must pass or be marked not applicable before the broadcast can be marked ready or on air. Use **Print call sheet** to print or save the selected schedule, production notes, rundown and readiness checklist as a PDF.
+5. **Overlays** – copy URLs, put overlays on air, fire stings, run the simulator. Theme, position, scale, follow mode and the preview page's size are stored in the server settings, so they survive reloads and restarts (and are shared by the Overlays page and `preview.html`).
 
-`npm run dev` runs server + Vite with hot reload (UI on http://localhost:5173). `npm test` runs engine, API, WebSocket and vMix-push tests. `npm run e2e` boots a throw-away server, plays a match and screenshots every overlay and page into `data/screenshots/`.
+After a match is completed, Operations can create a report draft from its recorded event history and linked incidents. Review it before approving; if the event log changes, the report is marked stale and must be regenerated. Operations records are stored locally in the same SQLite/JSON store. No AI, internet service, or external integration is required for scheduling, checklists, incident logging, or reports.
+
+`npm test` runs engine, API, WebSocket and vMix-push tests. `npm run e2e` boots a throw-away server, plays a match and screenshots every overlay and page into `data/screenshots/`.
 
 Storage is SQLite (`better-sqlite3`) in `data/`. If the native module cannot load, the app falls back to a JSON file store (`data/store.json`) behind the same interface. The match is an ordered list of events; all state is recomputed from them, so undo, edit and restart-recovery are exact.
 

@@ -203,6 +203,12 @@ export class MatchService extends EventEmitter {
 
   append(id: number, payload: EventPayload): LiveState {
     const entry = this.load(id);
+    const match = this.row(id);
+    if ((match.sport ?? 'cricket') === 'hockey'
+      && (entry.state as unknown as HockeyState).status === 'completed'
+      && payload.type !== 'MATCH_RESULT') {
+      throw new ApiError(409, 'MATCH_COMPLETE', 'This match is complete. Undo the result before recording more events.');
+    }
     const next: EngineEvent = { ...payload, id: (entry.events[entry.events.length - 1]?.id ?? 0) + 1 } as EngineEvent;
     const state = this.computeForMatch(id, entry.config, [...entry.events, next]);
     const saved = this.store.events.append(id, payload);
@@ -288,8 +294,12 @@ export class MatchService extends EventEmitter {
 
   private validate(input: MatchInput): void {
     if (input.teamAId === input.teamBId) throw new ApiError(400, 'SAME_TEAM', 'Pick two different teams.');
-    this.team(input.teamAId);
-    this.team(input.teamBId);
+    for (const [label, id] of [['A', input.teamAId], ['B', input.teamBId]] as const) {
+      const selected = this.team(id);
+      if (selected.sport && selected.sport !== input.sport) {
+        throw new ApiError(400, 'TEAM_SPORT_MISMATCH', `Team ${label} is registered for ${selected.sport}, not ${input.sport}.`);
+      }
+    }
     for (const [label, ids, teamId] of [['A', input.xiA, input.teamAId], ['B', input.xiB, input.teamBId]] as const) {
       const squad = this.store.list<PlayerRow>('players', teamId);
       if (!ids.length) {

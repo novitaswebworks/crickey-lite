@@ -24,4 +24,21 @@ body { font-family: Inter, system-ui, 'Segoe UI', Roboto, sans-serif; -webkit-ta
 @media print {
   body { background: white; color: black; }
   .no-print { display: none !important; }
+  @page { margin: 14mm; }
+  body * { visibility: hidden !important; }
+  [data-print-sheet], [data-print-sheet] * { visibility: visible !important; }
+  [data-print-sheet] {
+    display: block !important;
+    position: absolute;
+    inset: 0 auto auto 0;
+    width: 100%;
+    padding: 0;
+    background: white !important;
+    color: #111827 !important;
+  }
+  [data-print-sheet] * {
+    color: #111827 !important;
+    background: transparent !important;
+    box-shadow: none !important;
+  }
 }

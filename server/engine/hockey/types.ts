@@ -169,7 +169,7 @@ export type HockeyEventPayload =
   | { type: 'SHOOTOUT_ATTEMPT'; teamSide: Side; round: number; scored: boolean; takerId?: PlayerId }
   | { type: 'START_SHOOTOUT' }
   | { type: 'END_PERIOD'; at?: number }
-  | { type: 'MATCH_RESULT'; kind: 'won' | 'draw' | 'noresult'; winner?: Side; text?: string }
+  | { type: 'MATCH_RESULT'; kind: 'won' | 'draw' | 'noresult'; winner?: Side; text?: string; at?: number }
   | { type: 'ADD_PLAYER'; side: Side; player: PlayerRef };
 
 export type HockeyEngineEvent = HockeyEventPayload & { id: number };

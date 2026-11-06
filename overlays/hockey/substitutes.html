@@ -10,6 +10,8 @@
 * { box-sizing: border-box; }
 body { margin: 0; padding: 0; overflow: hidden; background: transparent; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
 #stage { width: 100vw; height: 100vh; position: relative; display: flex; flex-direction: column; align-items: center; justify-content: flex-end; padding-bottom: 2.5rem; }
+#stage.stage { opacity: 0; visibility: hidden; transition: opacity .4s ease, visibility 0s linear .4s; }
+#stage.stage.on { opacity: 1; visibility: visible; transition-delay: 0s; }
 
 /* Horizontal Subs Row */
 .subs-container {
@@ -169,6 +171,31 @@ body { margin: 0; padding: 0; overflow: hidden; background: transparent; font-fa
   letter-spacing: 0.05em;
   box-shadow: 0 10px 25px rgba(0, 0, 0, 0.5);
 }
+/* Bench is a single broadcast strip: substantial player tiles with a clear team rail. */
+#stage { padding: 0 4vw 5vh; }
+.subs-container { width: min(92vw, 1700px); max-width: none; gap: .65rem; margin-bottom: 1rem;
+  align-items: stretch; padding: .9rem; background: linear-gradient(100deg,#071329ed,#10234bed);
+  border-top: .2rem solid var(--team-color,#2563eb); border-bottom: .08rem solid #ffffff30;
+  box-shadow: 0 1rem 2.2rem #0009; }
+.subs-empty { width: 100%; padding: 1rem 1.25rem; color: #d6dfef; text-align: center; font-size: 1.15rem;
+  font-weight: 700; letter-spacing: .2em; text-transform: uppercase; }
+.sub-card { flex: 1 1 0; min-width: 0; padding: .6rem .25rem .7rem; background: #ffffff09;
+  border-bottom: .16rem solid color-mix(in srgb,var(--team-color,#2563eb) 75%,white); }
+.sub-img-wrap { width: 5.8rem; height: 5.8rem; margin: 0 0 .2rem; filter: drop-shadow(0 .4rem .5rem #0008); }
+.sub-img { max-width: 5.8rem; max-height: 5.8rem; }
+.sub-silhouette { width: 4.1rem; height: 4.1rem; font-size: 1rem; }
+.sub-tag { height: auto; max-width: 100%; filter: none; transform: none; }
+.sub-num { padding: .3rem .45rem; border-radius: .15rem 0 0 .15rem; font-size: 1rem; }
+.sub-name { display: block; min-width: 0; overflow: hidden; text-overflow: ellipsis; padding: .3rem .5rem;
+  border-radius: 0 .15rem .15rem 0; font-size: .82rem; white-space: nowrap; }
+.sub-tag * { transform: none; }
+.bottom-bar { width: min(92vw,1700px); justify-content: space-between; gap: 1rem; }
+.league-badge,.sponsor-badge { border: 0; border-radius: .2rem; padding: .8rem 1.3rem; background: #091633ef; font-size: 1.15rem; box-shadow: 0 .8rem 1.5rem #0007; }
+.team-plate { flex: 1; min-width: 0; border: 0; border-top: .2rem solid var(--team-color,#2563eb); border-radius: .2rem; padding: .75rem 2rem;
+  background: linear-gradient(100deg,#101d3c,#071329); box-shadow: 0 .8rem 1.5rem #0008; }
+.team-name { font-size: 2.1rem; letter-spacing: .1em; }
+.team-coach { font-size: 1.1rem; }
+@media (max-width: 1200px) { .subs-container { gap: .25rem; padding: .5rem; } .sub-img-wrap { width: 4.5rem; height: 4.5rem; } .sub-img { max-width: 4.5rem; max-height: 4.5rem; } .sub-name { font-size: .7rem; } }
 </style>
 </head>
 <body>
@@ -188,7 +215,7 @@ body { margin: 0; padding: 0; overflow: hidden; background: transparent; font-fa
   </div>
 </div>
 
-<script src="../overlay-client.js"></script>
+<script src="../overlay-client.js?v=mockup1-20261105"></script>
 <script>
 function buildSubCard(p, teamColor) {
   var card = document.createElement('div');
@@ -233,6 +260,12 @@ function buildSubCard(p, teamColor) {
 
 Overlay.init({
   name: 'hockey/substitutes',
+  // Team A and Team B can each have a browser source in the same OBS scene.
+  // Only the source matching the side selected in the Control Room goes on air.
+  isVisible: function (_state, payload, _entry, cfg) {
+    var requestedSide = new URLSearchParams(window.location.search).get('side');
+    return cfg.force || !requestedSide || !payload || !payload.side || payload.side === requestedSide;
+  },
   sample: function () {
     return {
       matchId: 'sample',
@@ -259,12 +292,17 @@ Overlay.init({
     U.empty(false);
 
     var urlParams = new URLSearchParams(window.location.search);
-    var side = (p && p.side) || urlParams.get('side') || (s && s.side) || 'A';
+    // Keep Team A and Team B browser sources independent even though they share
+    // the same server-side overlay visibility and trigger payload.
+    var requestedSide = urlParams.get('side');
+    var side = requestedSide === 'A' || requestedSide === 'B'
+      ? requestedSide
+      : ((p && p.side === 'B') || (s && s.side === 'B') ? 'B' : 'A');
     var team = s.teams ? s.teams[side] : null;
 
-    var teamName = (p && p.teamName) || (team ? team.name : 'Team ' + side);
-    var teamColor = (p && p.teamColor) || (team ? team.color : '#0055d4');
-    var coach = (p && p.coach) || (team ? team.coach : '') || '';
+    var teamName = (team && team.name) || (p && p.teamName) || 'Team ' + side;
+    var teamColor = (team && team.color) || (p && p.teamColor) || '#0055d4';
+    var coach = (team && team.coach) || (p && p.coach) || '';
     var tournament = (p && p.tournament) || s.tournament || 'FIH PRO LEAGUE';
     var sponsor = (p && p.sponsor) || s.sponsor || 'polytan';
 
@@ -277,10 +315,17 @@ Overlay.init({
     U.setText(U.el('sponsor'), sponsor);
     if (team) U.teamBadge(U.el('teamBadge'), team);
 
-    var subs = (p && p.substitutes && p.substitutes.length) ? p.substitutes : (team && team.substitutes ? team.substitutes : []);
+    var subs = team && team.substitutes
+      ? team.substitutes
+      : ((p && p.substitutes) || []);
     var container = U.el('subsList');
     container.innerHTML = '';
-
+    if (!subs.length) {
+      var empty = document.createElement('div');
+      empty.className = 'subs-empty';
+      empty.textContent = 'No substitutes listed';
+      container.appendChild(empty);
+    }
     for (var i = 0; i < subs.length; i++) {
       container.appendChild(buildSubCard(subs[i], teamColor));
     }

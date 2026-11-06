@@ -25,9 +25,17 @@ export function MatchSetup({ goto }: { goto: (p: string) => void }) {
   const [busy, setBusy] = useState(false);
 
   useEffect(() => {
-    void get<TeamDto[]>('/api/teams').then((t) => { setTeams(t); if (t[0]) setA(t[0].id); if (t[1]) setB(t[1].id); });
     void get<Settings>('/api/settings').then((s) => setOvers(s.defaultOvers));
   }, []);
+  useEffect(() => {
+    setTeams(null);
+    void get<TeamDto[]>(`/api/teams?sport=${sport}`).then((t) => {
+      setTeams(t);
+      setA(t[0]?.id ?? '');
+      setB(t[1]?.id ?? '');
+      setXi({ A: [], B: [] });
+    });
+  }, [sport]);
 
   useEffect(() => {
     for (const id of [a, b]) if (id !== '' && !squads[id]) void get<PlayerDto[]>(`/api/teams/${id}/players`).then((p) => setSquads((s) => ({ ...s, [id]: p })));
@@ -38,7 +46,8 @@ export function MatchSetup({ goto }: { goto: (p: string) => void }) {
   useEffect(() => { setXi((x) => ({ ...x, A: squadA.slice(0, pps).map((p) => p.id) })); }, [a, squads[a as number], pps]);
   useEffect(() => { setXi((x) => ({ ...x, B: squadB.slice(0, pps).map((p) => p.id) })); }, [b, squads[b as number], pps]);
 
-  if (teams && teams.length < 2) return <Empty title="Add two teams first" hint="A match needs two teams with players."><button className="btn btn-primary" onClick={() => goto('teams')}>Go to Teams</button></Empty>;
+  if (!teams) return <div className="mx-auto max-w-xl p-8 text-center text-slate-400">Loading {sport} teams…</div>;
+  if (teams && teams.length < 2) return <Empty title={`Add two ${sport} teams first`} hint={`Create sport-specific ${sport} teams and add their players before setting up this match.`}><button className="btn btn-primary" onClick={() => goto('teams')}>Go to Teams</button></Empty>;
 
   const toggle = (side: 'A' | 'B', id: number) => setXi((x) => ({ ...x, [side]: x[side].includes(id) ? x[side].filter((i) => i !== id) : [...x[side], id] }));
   const ok = a !== '' && b !== '' && a !== b && xi.A.length === pps && xi.B.length === pps;
@@ -69,7 +78,7 @@ export function MatchSetup({ goto }: { goto: (p: string) => void }) {
       const m = await post<{ id: number }>('/api/matches', body);
       await post(`/api/matches/${m.id}/activate`);
       toast(`${sport === 'hockey' ? 'Hockey match' : 'Match'} created — it is now the active match`);
-      goto('live');
+      goto('control');
     } catch (e) { toast((e as ApiFail).message, 'error'); } finally { setBusy(false); }
   };
 
@@ -115,7 +124,7 @@ export function MatchSetup({ goto }: { goto: (p: string) => void }) {
         <Field label="Team B"><select className="input" value={b} onChange={(e) => setB(Number(e.target.value))}>{teams?.map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}</select></Field>
         <Field label="Match title / stage"><input className="input" placeholder="Final · Day 1" value={title} onChange={(e) => setTitle(e.target.value)} /></Field>
         <Field label="Venue"><input className="input" value={venue} onChange={(e) => setVenue(e.target.value)} /></Field>
-        <Field label="Players per side (2–11)"><input className="input" type="number" min={2} max={11} value={pps} onChange={(e) => setPps(Math.max(2, Math.min(11, Number(e.target.value))))} /></Field>
+        <Field label={sport === 'hockey' ? 'Starting players per side (2–11)' : 'Players per side (2–11)'}><input className="input" type="number" min={2} max={11} value={pps} onChange={(e) => setPps(Math.max(2, Math.min(11, Number(e.target.value))))} /></Field>
 
         {sport === 'cricket' && (
           <>

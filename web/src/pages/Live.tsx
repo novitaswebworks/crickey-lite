@@ -1,7 +1,8 @@
 import type { InningsState, LiveState } from '@engine/types';
 import { useEffect, useRef, useState } from 'react';
 import { useRealtime } from '../realtime';
-import { Empty, Modal, isTyping } from '../ui';
+import { Empty, Modal, isTyping, toast } from '../ui';
+import { ApiFail, post } from '../api';
 import { FixMenu, EditBall } from '../live/FixMenu';
 import { BatterPicker, BowlerPicker, StartInnings } from '../live/Pickers';
 import { BattersCard, BowlerCard, PartnershipCard, Timeline } from '../live/Panels';
@@ -10,6 +11,7 @@ import { InningsCard } from '../live/Scorecard';
 import { promptText, useScorer } from '../live/scorer';
 import { WicketWizard } from '../live/WicketWizard';
 import { HockeyLive } from '../live/hockey/HockeyLive';
+import { LiveOverlayLinks } from '../live/LiveOverlayLinks';
 
 type ModalState = null | { kind: 'extra'; extra: ExtraKind } | { kind: 'wicket' } | { kind: 'bowler'; mid?: boolean } | { kind: 'batter' } | { kind: 'fix' } | { kind: 'help' } | { kind: 'edit'; id: number } | { kind: 'card' };
 
@@ -87,7 +89,7 @@ export function Live({ goto }: { goto: (page: string) => void }) {
           <div className="mt-5 flex flex-wrap justify-center gap-2">
             <button className="btn" onClick={() => void undo()}>Undo last step</button>
             <button className="btn" onClick={() => setModal({ kind: 'card' })}>Scorecard</button>
-            <button className="btn btn-primary" onClick={() => goto('broadcast')}>Show result overlay</button>
+            <button className="btn btn-primary" onClick={() => void post('/api/overlays/result/show').then(() => toast('Result overlay on air')).catch((e) => toast((e as ApiFail).message, 'error'))}>Show result overlay</button>
             <button className="btn" onClick={() => goto('setup')}>New match</button>
           </div>
         </div>
@@ -165,6 +167,7 @@ export function TopBar({ state, clients }: { state: LiveState; clients: number }
   const [label, cls] = badge(state.status);
   const short = inn ? state.teams[inn.battingSide].shortName : `${state.teams.A.shortName} v ${state.teams.B.shortName}`;
   return (
+    <>
     <header className="flex flex-wrap items-center gap-x-5 gap-y-2 rounded-xl border border-ink-700 bg-ink-800 px-4 py-3">
       <div className="min-w-0">
         <div className="truncate text-xs uppercase tracking-widest text-slate-400">{state.title || 'Match'}{inn ? ` · ${inn.superOver ? 'Super Over' : `Innings ${inn.number}`}` : ''}</div>
@@ -181,5 +184,7 @@ export function TopBar({ state, clients }: { state: LiveState; clients: number }
         <span className={`rounded px-3 py-1 text-xs font-extrabold tracking-wider ${cls}`}>{label}</span>
       </div>
     </header>
+    <LiveOverlayLinks matchId={Number(state.matchId)} sport="cricket" />
+    </>
   );
 }

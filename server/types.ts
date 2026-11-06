@@ -1,4 +1,5 @@
 export interface TeamRow {
+  sport?: 'cricket' | 'hockey';
   name: string;
   shortName: string;
   color: string;

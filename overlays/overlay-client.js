@@ -28,6 +28,13 @@
     link.rel = 'stylesheet';
     link.href = 'themes/' + cfg.theme + '.css';
     document.head.appendChild(link);
+    var clientScript = document.querySelector('script[src*="/overlay-client.js"]');
+    if (clientScript) {
+      var broadcastStyle = document.createElement('link');
+      broadcastStyle.rel = 'stylesheet';
+      broadcastStyle.href = new URL('broadcast.css?v=mockup1-20261105', clientScript.src).href;
+      document.head.appendChild(broadcastStyle);
+    }
     document.body.classList.add('theme-' + cfg.theme, 'pos-' + cfg.position);
     if (cfg.debug) {
       document.body.classList.add('debug');
@@ -126,8 +133,9 @@
     dbg();
     var entry = S.overlays ? S.overlays[opts.name] : null;
     var online = S.connected && Date.now() - S.lastMsgAt < 45000;
-    var visible = !!S.state && (cfg.force || (!!entry && entry.visible)) && (online || cfg.force);
     var payload = entry ? entry.payload : null;
+    var visible = !!S.state && (cfg.force || (!!entry && entry.visible)) && (online || cfg.force);
+    if (visible && opts.isVisible && !opts.isVisible(S.state, payload, entry, cfg)) visible = false;
     if (cfg.force && !payload && opts.sample && S.state) payload = opts.sample(S.state);
     if (S.state) {
       var sj = JSON.stringify(stripEffects(S.state));

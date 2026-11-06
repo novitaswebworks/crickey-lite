@@ -62,12 +62,13 @@ export async function uploadPlayerPhoto(playerId: number, file: File): Promise<v
   }
 }
 
-export interface TeamDto { id: number; name: string; shortName: string; color: string; logoPath: string | null; coach?: string | null; playerCount?: number }
+export interface TeamDto { id: number; sport: 'cricket' | 'hockey'; name: string; shortName: string; color: string; logoPath: string | null; coach?: string | null; playerCount?: number }
 export interface PlayerDto { id: number; teamId: number; name: string; shortName: string; shirtNo: string; role: string; orderIdx: number; photoPath?: string | null; isCaptain?: boolean }
 export interface MatchSummary {
   id: number; title: string; venue: string; sport: 'cricket' | 'hockey'; overs: number;
   teamA: { name: string; shortName: string; color: string }; teamB: { name: string; shortName: string; color: string };
   status: LiveState['status']; statusText: string; score: string; createdAt: string; active: boolean; eventCount: number;
 }
-export interface OverlayEntry { visible: boolean; triggerId: number; payload: unknown; durationMs: number | null }
+export interface OverlayEntry { visible: boolean; triggerId: number; payload: unknown; durationMs: number | null; startedAt?: number | null }
+export interface OverlayActivity { id: number; overlay: string; matchId: number | null; payload: unknown; at: number; action?: 'show' | 'fire' | 'hide' | 'hide-all' }
 export interface Info { port: number; lanUrls: string[]; storage: string; overlays: string[]; publicBaseUrl: string; pinRequired: boolean; activeMatchId: number | null }

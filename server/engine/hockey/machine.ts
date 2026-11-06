@@ -275,6 +275,15 @@ export class HockeyMachine {
       }
 
       case 'MATCH_RESULT': {
+        const at = event.at ?? (this.lastEventAt || Date.now());
+        if (this.clockRunning && this.clockStartedAt !== null) {
+          const elapsed = Math.max(0, at - this.clockStartedAt);
+          this.displayMs = Math.max(0, this.displayMs - elapsed);
+          this.totalElapsedGameTimeMs += elapsed;
+          this.clockRunning = false;
+          this.clockStartedAt = null;
+        }
+        this.lastEventAt = at;
         this.result = {
           kind: event.kind,
           winner: event.winner,

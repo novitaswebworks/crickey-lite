@@ -48,7 +48,7 @@
   </div>
 </div>
 </div>
-<script src="../overlay-client.js"></script>
+<script src="../overlay-client.js?v=mockup1-20261105"></script>
 <script>
 Overlay.init({
   name: 'hockey/scorebug',
@@ -97,7 +97,8 @@ Overlay.init({
       var m = Math.floor(totalSec / 60);
       var sec = totalSec % 60;
       var timeStr = (m < 10 ? '0' : '') + m + ':' + (sec < 10 ? '0' : '') + sec;
-      U.setText(U.el('clock'), timeStr);
+      // The clock updates continuously; avoid the shared .tick pop animation on each update.
+      U.el('clock').textContent = timeStr;
       U.el('clock').classList.toggle('running', !!clk.running);
     };
     renderClock(ms);

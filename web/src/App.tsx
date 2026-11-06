@@ -1,22 +1,23 @@
 import { useEffect, useState } from 'react';
 import { ApiFail, onPinRequired, post } from './api';
 import { Broadcast } from './pages/Broadcast';
+import { ControlRoom } from './pages/ControlRoom';
 import { History } from './pages/History';
-import { Live } from './pages/Live';
 import { MatchSetup } from './pages/MatchSetup';
+import { Operations } from './pages/Operations';
 import { Settings } from './pages/Settings';
 import { Teams } from './pages/Teams';
 import { startRealtime, useRealtime } from './realtime';
 import { Modal, Toasts, toast } from './ui';
 
 const PAGES = [
-  ['live', 'Live scoring'], ['teams', 'Teams'], ['setup', 'Match setup'], ['broadcast', 'Overlays'], ['history', 'History'], ['settings', 'Settings'],
+  ['control', 'Control Room'], ['operations', 'Operations'], ['teams', 'Teams'], ['setup', 'Match setup'], ['broadcast', 'Overlays'], ['history', 'History'], ['settings', 'Settings'],
 ] as const;
 type Page = (typeof PAGES)[number][0];
 
 function readHash(): Page {
   const h = location.hash.replace('#/', '');
-  return (PAGES.find(([k]) => k === h)?.[0] ?? 'live') as Page;
+  return (PAGES.find(([k]) => k === h)?.[0] ?? 'control') as Page;
 }
 
 export function App() {
@@ -49,7 +50,8 @@ export function App() {
         <span className={`ml-auto flex items-center gap-1.5 text-xs ${connected ? 'text-emerald-400' : 'text-red-400'}`}><span className={`h-2 w-2 rounded-full ${connected ? 'bg-emerald-400' : 'bg-red-500'}`} />{connected ? 'Server connected' : 'Reconnecting…'}</span>
       </nav>
       <main className="flex-1">
-        {page === 'live' && <Live goto={goto} />}
+        {page === 'control' && <ControlRoom />}
+        {page === 'operations' && <Operations />}
         {page === 'teams' && <Teams />}
         {page === 'setup' && <MatchSetup goto={goto} />}
         {page === 'broadcast' && <Broadcast />}

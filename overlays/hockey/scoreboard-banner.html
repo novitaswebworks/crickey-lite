@@ -16,6 +16,17 @@ body { margin: 0; padding: 0; overflow: hidden; background: transparent; font-fa
   flex-direction: column;
   align-items: center;
   filter: drop-shadow(0 15px 35px rgba(0, 0, 0, 0.75));
+  opacity: 0;
+  transform: translateY(40px);
+  visibility: hidden;
+  transition: opacity 0.4s ease, transform 0.4s cubic-bezier(0.16, 1, 0.3, 1), visibility 0s linear 0.4s;
+}
+
+.stage.on .banner-wrap {
+  opacity: 1;
+  transform: translateY(0);
+  visibility: visible;
+  transition-delay: 0s;
   animation: slideUp 0.4s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
@@ -125,6 +136,19 @@ body { margin: 0; padding: 0; overflow: hidden; background: transparent; font-fa
   z-index: 1;
   margin-top: -1px;
 }
+.banner-wrap { width: min(78vw, 1440px); }
+.tournament-pill { align-self: flex-start; margin-left: 2rem; padding: .45rem 1.4rem; border-radius: .15rem .15rem 0 0;
+  font-size: 1rem; box-shadow: 0 .35rem .7rem #0006; }
+.score-bar { width: 100%; min-width: 0; height: 5.4rem; border-radius: .2rem; border-top: .22rem solid #ffffff70;
+  background: linear-gradient(100deg,#08142a,#152643 48%,#08142a); box-shadow: 0 1rem 2rem #0009; }
+.team-section { position: relative; gap: 1rem; padding: 0 1.4rem; }
+.team-section.side-a { border-left-width: .35rem; }
+.team-section.side-b { border-right-width: .35rem; }
+.team-full-name { font-size: 1.6rem; letter-spacing: .07em; }
+.score-box { min-width: 10rem; padding: 0 1.4rem; font-size: 2rem; background: #b51d3a; clip-path: polygon(8% 0,92% 0,100% 50%,92% 100%,8% 100%,0 50%); }
+.sub-plate { min-width: 62%; padding: .5rem 2rem; margin-top: -.1rem; background: #e8eef8; font-size: 1rem; box-shadow: 0 .4rem .8rem #0007; }
+.sponsor-pill { align-self: flex-end; margin-right: 2rem; border-radius: 0 0 .15rem .15rem; padding: .35rem 1rem; }
+@media (max-width: 1000px) { .banner-wrap { width: 90vw; } .team-full-name { font-size: 1.2rem; } }
 </style>
 </head>
 <body>
@@ -151,7 +175,7 @@ body { margin: 0; padding: 0; overflow: hidden; background: transparent; font-fa
   </div>
 </div>
 
-<script src="../overlay-client.js"></script>
+<script src="../overlay-client.js?v=mockup1-20261105"></script>
 <script>
 Overlay.init({
   name: 'hockey/scoreboard-banner',

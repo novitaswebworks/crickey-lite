@@ -120,6 +120,57 @@ describe('overlays and triggers', () => {
     expect((await api('GET', '/api/overlays')).json.overlays.scorebug.visible).toBe(false);
     expect((await api('POST', '/api/overlays/nope/show')).status).toBe(404);
   });
+
+  it('supports Show, Fire, and Hide routes for nested hockey overlay names', async () => {
+    let r = await api('POST', '/api/overlays/hockey/scorebug/show');
+    expect(r.status).toBe(200);
+    expect(r.json.overlays['hockey/scorebug'].visible).toBe(true);
+
+    r = await api('POST', '/api/overlays/hockey/goal/trigger');
+    expect(r.status).toBe(200);
+    expect(r.json.overlays['hockey/goal'].visible).toBe(true);
+
+    r = await api('POST', '/api/overlays/hockey/scorebug/hide');
+    expect(r.status).toBe(200);
+    expect(r.json.overlays['hockey/scorebug'].visible).toBe(false);
+
+    const history = await api('GET', '/api/overlays/history?limit=3');
+    expect(history.status).toBe(200);
+    expect(history.json.map((entry: { action: string }) => entry.action)).toEqual(['hide', 'fire', 'show']);
+  });
+
+  it('fires hockey live-match graphics from scoring events and respects hockey trigger settings', async () => {
+    const teams = ctx.store.list<any>('teams');
+    const match = ctx.matches.create({
+      sport: 'hockey', title: 'Hockey automation check', venue: 'Test venue',
+      teamAId: teams[0].id, teamBId: teams[1].id, overs: 0, playersPerSide: 11,
+      tossWinner: null, tossDecision: null, xiA: [], xiB: [], periods: 4, periodDurationMins: 15,
+    });
+    const originalActive = ctx.matches.activeId();
+    const originalTriggers = ctx.settings.get().autoTrigger;
+    try {
+      ctx.matches.setActive(match.id);
+      const state = ctx.matches.state(match.id) as any;
+      const scorerId = state.rosters.A[0].id;
+      const goal = await api('POST', `/api/matches/${match.id}/events`, { type: 'GOAL', teamSide: 'A', scorerId, kind: 'FG', at: Date.now() });
+      expect(goal.status).toBe(200);
+      expect((await api('GET', '/api/overlays')).json.overlays['hockey/goal']).toMatchObject({ visible: true, payload: { scorer: state.rosters.A[0].name } });
+
+      ctx.overlays.hide('hockey/goal');
+      ctx.settings.update({ autoTrigger: { hockeyGoal: false } });
+      await api('POST', `/api/matches/${match.id}/events`, { type: 'GOAL', teamSide: 'A', scorerId, kind: 'FG', at: Date.now() + 1 });
+      expect((await api('GET', '/api/overlays')).json.overlays['hockey/goal'].visible).toBe(false);
+
+      ctx.settings.update({ autoTrigger: originalTriggers });
+      await api('POST', `/api/matches/${match.id}/events`, { type: 'START_SHOOTOUT' });
+      expect((await api('GET', '/api/overlays')).json.overlays['hockey/shootout'].visible).toBe(true);
+      await api('POST', `/api/matches/${match.id}/events`, { type: 'MATCH_RESULT', kind: 'won', winner: 'A' });
+      expect((await api('GET', '/api/overlays')).json.overlays['hockey/scoreboard-banner'].visible).toBe(true);
+    } finally {
+      ctx.settings.update({ autoTrigger: originalTriggers });
+      if (originalActive !== null) ctx.matches.setActive(originalActive);
+    }
+  });
 });
 
 describe('realtime', () => {

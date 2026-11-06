@@ -7,6 +7,7 @@ import { WebSocketServer } from 'ws';
 import { ZodError } from 'zod';
 import { registerCatalogRoutes } from './api-catalog';
 import { registerLiveRoutes } from './api-live';
+import { registerOperationsRoutes } from './operations';
 import { Context } from './context';
 import { sseClient, wsClient } from './hub';
 import { log } from './logger';
@@ -70,6 +71,7 @@ export function createApp(ctx: Context): { app: express.Express; server: http.Se
 
   registerCatalogRoutes(app, ctx);
   registerLiveRoutes(app, ctx);
+  registerOperationsRoutes(app, ctx);
 
   fs.mkdirSync(UPLOAD_DIR, { recursive: true });
   app.use('/uploads', express.static(UPLOAD_DIR, { maxAge: '1h' }));
