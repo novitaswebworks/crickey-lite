@@ -2,111 +2,154 @@
 
 _Developed by [Novitas WebWorks](https://novitasweb.works)._
 
-Live cricket scoring for ONE operator, plus broadcast graphics for **vMix** (primary) and **OBS**. One process, one command, no Docker, no database server, no logins.
+Crickey Lite is a local sports scoring and broadcast operations app for **cricket and field hockey**. It provides match setup, live scoring, a live Control Room, broadcast overlays for **OBS Studio and vMix**, and pre- and post-broadcast Operations tools. It is designed to run on a local network (LAN); it does not require a cloud service or internet connection during a broadcast.
 
-## 5-minute quick start
+## Requirements
+
+- Node.js 20 or newer
+- OBS Studio or vMix for on-air graphics (optional)
+- Devices running the operator panel and video mixer must be able to reach the server over the same LAN
+
+## Start the app
 
 ```bash
 npm install
-npm run dev         # development: http://localhost:5173, live reload enabled
-npm run seed       # optional: two demo teams + a demo T20 match (becomes the active match)
+npm run dev
 ```
 
-Node 20+. In development, Vite serves the operator panel at `http://localhost:5173` with browser hot reload; the API and overlay server stays at `http://localhost:3000`. `tsx watch` restarts the API automatically when server TypeScript changes, so you don't need to stop and restart it by hand. OBS/vMix browser sources should continue using the printed `:3000/overlays/...` URLs.
+In development, the panel is at `http://localhost:5173` and the API and overlays are served at `http://localhost:3000`. Vite reloads panel changes in the browser; `tsx watch` restarts the API when server TypeScript changes. Keep overlay browser sources pointed at port `3000`.
 
-If the API server is already running with `npm start`, use a second terminal and run `npm run dev:web`; this gives the panel hot reload through Vite without disconnecting the existing server or overlay sources. When off-air, switch to `npm run dev` to also enable automatic API-server reloads for server-code changes.
+For a production-style run:
 
-For a production-like run without development watchers, use `npm run build && npm start`; the panel and overlays are served from `http://localhost:3000`. If an OBS/vMix browser source has already loaded an overlay page, use that source's Refresh action after changing overlay HTML/CSS so it fetches the updated file.
+```bash
+npm run build
+npm start
+```
 
-1. **Teams** – add two teams (name, 3–4 letter short name, colour, optional logo) and paste players one per line. Order = batting order.
-2. **Match setup** – pick teams, overs, players per side (2–11), toss, playing XI → *Create match*. It becomes the active match.
-3. **Live scoring** – *Start innings*, choose openers and bowler, then score.
-4. **Operations** – schedule a match for broadcast, customize its cricket/hockey rundown, complete technical preflight checks, and keep a match-linked incident log. Critical checks must pass or be marked not applicable before the broadcast can be marked ready or on air. Use **Print call sheet** to print or save the selected schedule, production notes, rundown and readiness checklist as a PDF.
-5. **Overlays** – copy URLs, put overlays on air, fire stings, run the simulator. Theme, position, scale, follow mode and the preview page's size are stored in the server settings, so they survive reloads and restarts (and are shared by the Overlays page and `preview.html`).
+The panel, API, and overlays are then served from `http://localhost:3000`. The server listens on `0.0.0.0` and prints its LAN addresses at startup. Open the printed LAN address from the operator computer and from OBS/vMix if they run on another machine. If a source does not pick up changed overlay files, refresh that browser source.
 
-After a match is completed, Operations can create a report draft from its recorded event history and linked incidents. Review it before approving; if the event log changes, the report is marked stale and must be regenerated. Operations records are stored locally in the same SQLite/JSON store. No AI, internet service, or external integration is required for scheduling, checklists, incident logging, or reports.
+Optional demo data:
 
-`npm test` runs engine, API, WebSocket and vMix-push tests. `npm run e2e` boots a throw-away server, plays a match and screenshots every overlay and page into `data/screenshots/`.
+```bash
+npm run seed
+```
 
-Storage is SQLite (`better-sqlite3`) in `data/`. If the native module cannot load, the app falls back to a JSON file store (`data/store.json`) behind the same interface. The match is an ordered list of events; all state is recomputed from them, so undo, edit and restart-recovery are exact.
+This creates demo teams and a demo cricket match and makes that match active. Do not run it against a data directory you want to keep unchanged.
 
-## Going live with vMix
+## Typical match workflow
 
-Overlay URL pattern: `http://<host>:3000/overlays/<name>.html?match=<id>&theme=classic|neon|minimal&position=bottom|top&scale=1&debug=1`
-(`match` is optional – without it overlays follow the active match.) Names: `scorebug batters bowler partnership four six wicket new-batter over-summary target scorecard versus result lower-third milestone`.
+1. **Teams:** choose Cricket or Hockey, create teams, then add their players. Cricket player roles include Batter, Bowler, Wicketkeeper, and All-rounder. Hockey positions include Goalkeeper, Defender, Midfielder, Forward, and Utility. Team rosters are separate by sport; logos, player photos, shirt numbers, and captain markings can be added where applicable.
+2. **Match setup:** select two teams and their players. Cricket setup includes overs and toss details. Hockey setup includes starting players and period format/duration. Creating a match makes it active.
+3. **Live Control Room:** use the Broadcast controls workspace for score/clock status, overlay cues, output connection indicators, graphic preview, cue history, and dismiss controls. Switch to Live match scoring for the sport's scoring controls. Hockey includes its match clock and hockey events; cricket includes innings scoring and its scoring tools.
+4. **Operations:** schedule a match, prepare its sport-specific rundown and technical preflight checklist, record incidents, and print/save a call sheet. After a match is completed, generate and review a report draft from match events and linked incidents. Approve the report after review; changes to the event history or incidents make it stale.
+5. **Overlays:** configure graphic URLs and themes, preview the graphics, and check connected browser-source counts. Use the Control Room or Overlays page to show, fire, and dismiss graphics.
 
-**Mode 1 – Browser input (recommended).** vMix → *Add Input → Web Browser*, paste the URL, width 1920, height 1080, tick *Transparent*. One input per overlay. Leave the inputs on permanently in an overlay layer: Crickey Lite shows/hides the graphics with its own animations (the *On air* buttons on the Overlays page). Alternatively drive them with vMix's own overlay buttons. *Copy all vMix URLs* and *Print overlay URL table* are on the Overlays page.
+Operations records are stored locally with the match data. They are separate from live scoring and overlay control. Critical preflight checks must pass or be marked not applicable before a broadcast can be marked ready or on air.
 
-**Mode 2 – Data sources (for your own GT/NewBlue titles).** vMix → *Settings → Data Sources → Add → XML / JSON / CSV* with
-`http://<host>:3000/api/vmix/state.json` (also `.xml`, `.csv`), refresh 500 ms–1 s. Keys include `team_a_name team_a_score batting_team_short score wickets overs crr striker_name striker_runs striker_balls nonstriker_* bowler_name bowler_overs bowler_runs bowler_wkts bowler_figures this_over target need_runs balls_left rrr chase_text status_text free_hit powerplay result_text`.
+## OBS Studio setup
 
-**Mode 3 – API push (optional).** Settings → vMix: enable, set the address (default `http://localhost:8088`), map title fields (`Input`, `Field.Text`, value = a feed key like `striker_name` or a template like `{batting_team_short} {score}`) and optionally map four/six/wicket to `OverlayInput<N>In`, *In then Out*, or toggle. Only changed values are sent; failures retry with back-off and never block scoring. *Test connection* and a debug log are on the Overlays page.
+1. In OBS, add a **Browser Source** for each graphic you need. Use the LAN URL printed by the server, for example `http://192.168.x.x:3000/overlays/hockey/scorebug.html`.
+2. Set the browser source width and height to **1920 × 1080** and enable transparency if shown in your OBS version.
+3. Turn **Shutdown source when not visible** off and **Refresh browser when scene becomes active** off, so sources remain connected to the live overlay feed.
+4. Add the graphics as browser sources in your Main Live scene; you can also place them in dedicated scenes if that suits your production. Keep the sources loaded and use Crickey Lite's Control Room or Overlays page to show, fire, and hide the graphics.
+5. Open the Control Room and check its browser source connection counts. Use **Preview** there to inspect a graphic without putting it on air.
 
-## Going live with OBS
+OBS scene auto-switching is optional and configured under **Settings → OBS** through obs-websocket v5. It can switch to a configured scene for supported cricket events and return after the configured duration. It is not required for browser-source overlays.
 
-Add *Browser Source* with the same URLs: width 1920, height 1080, **Shutdown source when not visible: off**, **Refresh browser when scene becomes active: off**. Optional (Settings → OBS, off by default): obs-websocket v5 (port 4455 + password) to switch scene on wicket/four/six for N seconds and return.
+## vMix setup
 
-## Remote client access
+### Browser overlays
 
-* **LAN:** the server binds to `0.0.0.0`; the Overlays page shows LAN URLs and a QR code for the operator panel.
-* **Over the internet:** `cloudflared tunnel --url http://localhost:3000` (or `ngrok http 3000`), then set **Public base URL** in Settings so *Copy URL* generates correct links.
-* **PIN (optional):** set in Settings or `PIN=1234 npm start`. Writes need it; overlays and read-only data feeds stay open so vMix can load them. CORS is open for read endpoints only.
+Add an **Input → Web Browser** for each graphic. Use the server's LAN URL, set it to **1920 × 1080**, and enable transparency. Keep inputs available and use the Control Room or Overlays page to control the graphic state.
 
-## Match-day checklist
+URL pattern:
 
-- [ ] `npm run build && npm start`, operator panel opens, "Server connected" is green
-- [ ] Teams, logos and players correct; match created and active
-- [ ] Overlay inputs added in vMix/OBS; Overlays page shows "● n" next to each connected overlay
-- [ ] Preview page (`/overlays/preview.html`) looks right in the chosen theme
-- [ ] Fire *Four*, *Six*, *Wicket* once from the Overlays page; *Hide all*
-- [ ] Laptop on power, sleep disabled; second device can open the LAN URL
-- [ ] Practise Undo and the *Swap strike* safety net
+```text
+http://<server-lan-ip>:3000/overlays/<overlay-name>.html?match=<match-id>&theme=neon
+```
 
-## Keyboard shortcuts
+The `match` parameter is optional; if omitted, the overlay follows the active match. Supported themes are `classic`, `neon`, and `minimal`. Hockey Starting 11 and Substitutes URLs can include `side=A` or `side=B`, for example:
 
-`0–6` runs · `W` wicket · `D` wide · `N` no-ball · `B` bye · `L` leg bye · `S` swap strike · `U` / `Ctrl/Cmd+Z` undo · `Space`/`Enter` confirm · `Esc` cancel · `1–9` pick in wizards · `Enter` reopens a dismissed new-bowler / new-batter picker · `?` cheat sheet. Disabled while typing and while a required prompt is open. A whole innings can be scored from the keyboard. Keyboard presses are never debounced (two quick `0`s are two dot balls); mouse clicks ignore an identical repeat within 250 ms. A last-wicket dismissal asks for one extra *Confirm wicket* press. Tie, no-result and team-won results, and *End innings*, ask for a browser confirm. The ball-edit dialog shows the effect on the totals (or the reason it is refused) before you save, and disables *Save* for refused edits.
+```text
+http://<server-lan-ip>:3000/overlays/hockey/starting11.html?side=A&theme=neon
+http://<server-lan-ip>:3000/overlays/hockey/substitutes.html?side=B&theme=neon
+```
 
-## How the rules were interpreted (please double-check)
+Team A and Team B URLs let each browser source render the requested side. The Control Room fires one side per cue; each Starting 11 or Substitutes graphic family has one shared on-air state, so both sides of the same family are not independently fired at once.
 
-* **Innings order:** the side that did not bat in the previous innings bats next (the engine rejects the same side twice, except for the first Super Over innings).
-* **Chase target** = innings 1 total + 1; the chase ends when runs ≥ target. Runs = target − 1 is a tie.
-* **Strike** swaps on the runs *run* (bat runs, byes, leg byes, wide additional runs, plus overthrows). A 4 or 6 hit to the boundary is not "run" (untick via the edit dialog if all four were run). End-of-over swap is applied after that.
-* **Run out / caught crossing:** the new batter takes the dismissed batter's end after the completed runs. A *"batters crossed?"* toggle (caught and run out) flips the ends; *Swap strike* is the safety net.
-* **Wide** = 1 + additional runs, all charged to the bowler; **no-ball** = 1 + bat runs to bowler (byes/leg-byes off a no-ball go to extras only) and the ball counts as faced; free hit follows and survives wides and dead balls.
-* **Dismissals allowed:** wide – stumped, run out, hit wicket; no-ball and free hit – run out, obstructing, handled, hit twice; timed out / retired out are recorded as dead balls. Retired hurt is not a wicket and the batter may return.
-* **Bowler credit:** bowled, caught, lbw, stumped, hit wicket. Max overs = max(ceil(overs/5), ceil(overs/bowlers)), switchable off.
-* **Maiden** = a full over by one bowler with no runs charged to them. Forced short overs (*End over*) are counted as an over; bowler "overs" figures then use 6-ball arithmetic.
-* **Super Over:** after a tie, *Start Super Over*: 1 over, 2 wickets, the side that batted second bats first.
-* **Penalty runs** go to the batting side. **No DLS maths:** type a revised target/overs.
-* Hat-trick = three consecutive legal deliveries by one bowler all taking bowler-credited wickets.
-* Storage uses a generic `docs` table plus real `events` and `kv` tables instead of one table per entity.
+### vMix data feed and API push
+
+For custom vMix titles, the app exposes live cricket data at:
+
+```text
+http://<server-lan-ip>:3000/api/vmix/state.json
+http://<server-lan-ip>:3000/api/vmix/state.xml
+http://<server-lan-ip>:3000/api/vmix/state.csv
+```
+
+Configure a vMix Data Source to refresh at an appropriate interval (typically 500 ms to 1 s). The feed includes cricket match, batter, bowler, score, target, and over fields.
+
+Optional vMix API push is configured under **Settings → vMix**. Enable it, enter the reachable vMix API address, then map title inputs and fields. The Broadcast/Overlays page provides connection testing and a recent push log. The vMix machine must be reachable from the machine running Crickey Lite.
+
+## Overlay behavior and names
+
+Cricket overlay names include `scorebug`, `batters`, `bowler`, `partnership`, `four`, `six`, `wicket`, `new-batter`, `over-summary`, `target`, `scorecard`, `versus`, `result`, `lower-third`, and `milestone`.
+
+Hockey overlay names include `hockey/scorebug`, `hockey/goal`, `hockey/card`, `hockey/penalty-corner`, `hockey/shootout`, `hockey/starting11`, `hockey/substitutes`, and `hockey/scoreboard-banner`.
+
+Persistent graphics stay visible until hidden. Timed cues auto-hide according to **Settings → Overlays**. Event cues temporarily hide a visible scorebug and restore it when the cue ends unless the operator changes the scorebug state during the cue. **Dismiss all graphics** hides all overlay families. Overlay state is shared on the server, so connected sources update together; it is not stored separately per match.
+
+## LAN and operator security
+
+This project is intended for a trusted local network. Keep the server and OBS/vMix machines on the same LAN and use the printed LAN address instead of `localhost` for browser sources running on another computer. Check the machine's firewall if another LAN device cannot connect.
+
+An optional operator PIN can be configured in Settings or set with `PIN=1234 npm start`. The PIN protects write actions; overlay pages and read-only output feeds remain accessible to browser sources. Do not expose the server to an untrusted network. The `Public base URL` setting exists for URL generation but is not needed for the intended LAN workflow.
+
+## Data, build, and checks
+
+Match, team, player, Operations, and settings data are stored locally under `data/`. The app uses SQLite (`better-sqlite3`) when available and falls back to a JSON store at `data/store.json` if the native module cannot load. Back up the data directory before moving or replacing the installation.
+
+```bash
+npm run build   # production web build and TypeScript check
+npm test        # Vitest test suite
+npm run e2e     # end-to-end run; writes screenshots under data/screenshots/
+```
+
+## Cricket scoring notes
+
+- Match state is computed from an ordered event log; undo/edit actions update state from that history.
+- A chase target is the first innings total plus one. A score one short is a tie.
+- Strike changes account for completed runs and overthrows; boundary 4/6 events are not treated as running unless corrected in the ball editor.
+- Wides and no-balls use cricket extras and dismissal rules. Free hit state persists through wides and dead balls.
+- Bowler-credited dismissals are bowled, caught, lbw, stumped, and hit wicket. DLS is not calculated; enter revised overs/target manually when needed.
+- Super Over is available after a tie. Match formats are limited-overs cricket; Test and follow-on formats are not implemented.
+
+Check your competition's playing conditions before using match results or rules on air.
 
 ## Known limitations
 
-* Single operator, single machine; no accounts or roles.
-* One shared on-air state for all overlays (per-match overlay state is not separate).
-* Limited-overs, two-innings cricket only (no Tests/follow-on).
-* Squads of teams used in a match are locked (rename instead of delete).
-* Bowler "overs" for manually shortened overs are approximate.
-* Wicket-wizard and picker digit hotkeys cover the first 9 (fielders: 10) players; later players are picked by click or Tab.
-* The *Result* overlay shows "MATCH SO FAR" with both scores (no result sentence) until the match is completed.
-* The operator UI was hand-checked in the built-in browser at about 800×600 and 1024×768; wider screens were checked through screenshots only.
-* vMix push, OBS control, LAN access from a second device and remote tunnels were tested against mocks/offline only – not a live vMix/OBS install, not a second device, not a tunnel.
+- Designed for a single operator and a single local server; there are no user accounts or role-based permissions.
+- Overlay state is shared by graphic type across connected browser sources and is not isolated per match. Starting 11 and Substitutes use a side parameter and the Control Room fires the selected side, but both sides of one graphic family cannot be independently on air simultaneously.
+- Hockey formations use player roles/positions and the Starting 11 graphic; formation coordinates are currently determined by the overlay layout rather than an editable tactical board.
+- OBS control is optional and limited to configured scene switching for supported cricket events; the browser overlays work without OBS WebSocket.
+- vMix push and OBS WebSocket depend on the configured device, API settings, and LAN reachability. Verify them on the actual production machines before a live event.
+- Squads used by a match are locked to preserve match history; edit the team roster before creating the match.
 
 ## Design and licences
 
-* **Original graphics.** The overlay look is drawn from scratch for this project: floating rounded modules with gaps, team-coloured spines, rounded-square badges and ball beads, wicket pips, a ball-dot strike marker, and stings with a line that counts down to auto-hide. It does not reproduce any broadcaster's, league's or board's graphics package, colours or layout. The three themes are *classic* (warm charcoal-green with a clay accent), *neon* (near-black with a lime edge) and *minimal* (warm off-white with a rust accent); the names stay the same so existing URLs keep working.
-* **No third-party marks.** There are no league, tournament, sponsor or broadcaster logos or names anywhere in the app; team names, colours and logos come only from what the operator enters. If you add real team or competition logos, you are responsible for having the right to broadcast them.
-* **Fonts.** Overlays use Oswald (SIL Open Font License 1.1, copy in `overlays/fonts/OFL-Oswald.txt`), bundled locally. The operator UI uses the system font stack; nothing is fetched at runtime.
-* **Code.** Dependencies are the open-source packages listed in `package.json` under their own licences. Cricket terms and laws are not copyrightable, but check the rules of your own competition before using the result wording on air.
-* This is a good-faith summary, not legal advice.
+- Overlay graphics are original project designs and include classic, neon, and minimal themes. Team names, colours, logos, and player images are entered by the operator; use only assets you have permission to broadcast.
+- Oswald is bundled locally under the SIL Open Font License 1.1; see `overlays/fonts/OFL-Oswald.txt`. The operator panel uses system fonts and does not fetch fonts at runtime.
+- Dependencies are open-source packages listed in `package.json`, each under its own licence. This document is a project summary, not legal advice.
 
 ## Troubleshooting
 
-* *Port busy:* `PORT=3100 npm start`.
-* *Overlay blank in vMix:* open the same URL with `&debug=1&force=1` in a browser; check the Overlays page "On air" state; the overlay stays transparent by design while disconnected.
-* *Native SQLite fails to build:* the app logs it and uses the JSON store automatically.
-* *Logs:* `data/logs/` (7 days kept).
+- **Port in use:** start with another port, e.g. `PORT=3100 npm start`.
+- **LAN device cannot open the panel/overlay:** use the server's printed LAN IP, confirm both machines share the LAN, and check firewall rules.
+- **Blank overlay:** confirm the browser source URL uses the right LAN host and port, inspect its `match`/`side` parameters, verify the graphic is on air in the Control Room/Overlays page, then refresh the source. `&debug=1&force=1` can help inspect the overlay page in a normal browser.
+- **Changes are not visible in OBS/vMix:** development server reloads app code, but an already-loaded browser source may need its Refresh action after overlay HTML/CSS edits.
+- **SQLite native module fails:** the app falls back to JSON storage; see the server log.
+- **Logs:** `data/logs/`; old logs are pruned automatically.
 
 ---
+
 Developed by [Novitas WebWorks](https://novitasweb.works).
